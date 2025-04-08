@@ -214,6 +214,28 @@ export class MetricsGateway implements OnGatewayConnection, OnGatewayDisconnect 
     }
   }
 
+  private handleMockMessage(message: any): void {
+    // Create a typed interface for message handling
+    interface MetricsMessage {
+      action: string;
+      channel?: string;
+      stream?: string;
+      options?: {
+        requestId?: string;
+        delayMs?: number;
+        [key: string]: unknown;
+      };
+      _forceError?: boolean;
+      target?: string;
+    }
+
+    // Type the incoming message instead of using 'any'
+    const typedMessage = message as MetricsMessage;
+    this.loggerService.info('MetricsGateway', `Mock mode: Processing message ${JSON.stringify(typedMessage)}`);
+    
+    // ...existing code...
+  }
+
   onModuleDestroy(): void {
     if (this.metricsSubscription) {
       this.metricsSubscription.unsubscribe();

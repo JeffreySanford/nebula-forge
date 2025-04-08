@@ -1,12 +1,95 @@
-<mat-card class="themed-card mat-elevation-z4">
-  <mat-card-title>GraphQL Explorer</mat-card-title>
-  <mat-card-content>
-    <p>Query playground, live schema view, mutation/response logs...</p>
-    <div class="graphql-container">
-      <h1>GraphQL Interface</h1>
+<div class="graphql-container">
+  <!-- Mock data indicator is applied to the main container -->
+  <mat-card class="themed-card main-card" [ngClass]="{'mock-data-border': isMockData, 'mock-data-indicator': isMockData}">
+    <mat-card-title>GraphQL Explorer</mat-card-title>
+    <mat-card-content>
       <div class="graphql-content">
-        <app-graphql-tile></app-graphql-tile>
+        <!-- GraphQL Playground -->
+        <div class="playground-container">
+          <div class="query-editor">
+            <h3>Query Editor</h3>
+            <div class="editor-container">
+              <textarea class="query-textarea" 
+                        placeholder="Enter your GraphQL query here..." 
+                        [value]="sampleQuery"></textarea>
+              <button mat-raised-button color="primary" class="execute-button" 
+                      (click)="executeQuery(sampleQuery)">Execute Query</button>
+            </div>
+          </div>
+          
+          <div class="query-result">
+            <h3>Response</h3>
+            <div class="result-container">
+              <!-- Using a property from the component to avoid interpolation issues -->
+              <pre class="result-content">{{ jsonResponse }}</pre>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Tabs for Schema and Operations -->
+        <mat-tab-group animationDuration="200ms" mat-stretch-tabs="false" mat-align-tabs="start">
+          <mat-tab label="Schema">
+            <div class="schema-container">
+              <div class="schema-types">
+                <h3>Types</h3>
+                <mat-list>
+                  <mat-list-item *ngFor="let type of (schema$ | async)">
+                    <div class="type-name">{{ type.name }}</div>
+                    <div class="type-category">{{ type.type }}</div>
+                  </mat-list-item>
+                </mat-list>
+              </div>
+              
+              <div class="schema-details">
+                <h3>Schema Definition</h3>
+                <pre class="schema-definition">{{ schemaString$ | async }}</pre>
+              </div>
+            </div>
+          </mat-tab>
+          
+          <mat-tab label="Operations">
+            <div class="operations-container">
+              <!-- Stats cards row -->
+              <div class="stats-row">
+                <div class="stat-card">
+                  <div class="stat-value">{{ operationStats.totalQueries }}</div>
+                  <div class="stat-label">Queries</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-value">{{ operationStats.totalMutations }}</div>
+                  <div class="stat-label">Mutations</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-value">{{ operationStats.totalErrors }}</div>
+                  <div class="stat-label">Errors</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-value">{{ operationStats.avgDuration }}ms</div>
+                  <div class="stat-label">Avg Duration</div>
+                </div>
+              </div>
+              
+              <!-- Operations list -->
+              <h3>Recent Operations</h3>
+              <div class="operations-list">
+                <div *ngFor="let op of (operations$ | async)" 
+                     class="operation-item" 
+                     [ngClass]="{'error': op.status === 'error'}">
+                  <div class="operation-header">
+                    <div class="operation-name">{{ op.name }}</div>
+                    <div class="operation-type">{{ op.type }}</div>
+                    <div class="operation-status" [ngClass]="op.status">{{ op.status }}</div>
+                  </div>
+                  <div class="operation-details">
+                    <span class="operation-time">{{ op.timestamp | date:'short' }}</span>
+                    <span class="operation-duration">{{ op.duration }}ms</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </mat-tab>
+        </mat-tab-group>
       </div>
-    </div>
-  </mat-card-content>
-</mat-card>
+    </mat-card-content>
+  </mat-card>
+</div>
