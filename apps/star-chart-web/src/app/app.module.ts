@@ -1,129 +1,88 @@
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
+import { RouterModule } from '@angular/router';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { HttpClientModule } from '@angular/common/http';
-import { RouterModule, Routes } from '@angular/router';
-import { APP_INITIALIZER } from '@angular/core';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 
-// Material modules
-import { MatToolbarModule } from '@angular/material/toolbar';
-import { MatButtonModule } from '@angular/material/button';
-import { MatSidenavModule } from '@angular/material/sidenav';
-import { MatIconModule } from '@angular/material/icon';
-import { MatListModule } from '@angular/material/list';
-import { MatCardModule } from '@angular/material/card';
-
-// Components
 import { AppComponent } from './app.component';
-import { DashboardComponent } from './pages/dashboard/dashboard.component';
+import { AppRoutingModule } from './app-routing.module';
+import { MaterialModule } from './material.module';
 
-// Services
+// Import layout modules
+import { LayoutModule } from './layout/layout.module';
+import { TopNavModule } from './layout/top-nav/top-nav.module';
+import { FooterModule } from './layout/footer/footer.module';
+
+// Import directives module
+import { DirectivesModule } from './directives/directives.module';
+
+// Import component modules for shared components
+import { MetricsTileModule } from './components/metrics-tile/metrics-tile.module';
+import { DatabaseTileModule } from './components/database-tile/database-tile.module';
+import { GraphQLTileModule } from './components/graphql-tile/graphql-tile.module';
+import { PerformanceTileModule } from './components/performance-tile/performance-tile.module';
+import { LogViewerModule } from './components/log-viewer/log-viewer.module';
+import { ConnectionIndicatorModule } from './components/connection-indicator/connection-indicator.module';
+import { StreamStatusIndicatorModule } from './components/stream-status-indicator/stream-status-indicator.module';
+import { LogFeedModule } from './components/log-feed/log-feed.module';
+import { UserStateModule } from './components/user-state/user-state.module';
+import { UserGraphModule } from './components/user-graph/user-graph.module';
+
+// Import services
+import { MetricsService } from './services/metrics.service';
 import { LoggerService } from './services/logger.service';
 import { WebSocketService } from './services/websocket.service';
 import { WebSocketRegistrationService } from './services/websocket-registration.service';
-import { MetricsService } from './services/metrics.service';
-import { PerformanceService } from './services/performance.service';
+import { MetricsApiService } from './services/metrics-api.service';
+import { MetricsSocketService } from './services/metrics-socket.service';
+import { DatabaseService } from './services/database.service';
 import { UserStateService } from './services/user-state.service';
-
-// Feature Modules
-import { UserStateModule } from './components/user-state/user-state.module';
-import { UserGraphModule } from './components/user-graph/user-graph.module';
-import { TopNavModule } from './layout/top-nav/top-nav.module';
-import { FooterModule } from './layout/footer/footer.module';
-import { DirectivesModule } from './directives/directives.module';
-
-// Page modules
-import { DashboardModule } from './pages/dashboard/dashboard.module';
-import { MetricsModule } from './pages/metrics/metrics.module'; 
-import { LogsModule } from './pages/logs/logs.module';
-import { GraphqlModule } from './pages/graphql/graphql.module';
-import { DatabaseModule } from './pages/database/database.module';
-import { PerformanceModule } from './pages/performance/performance.module';
-import { AboutModule } from './pages/about/about.module';
-import { ContactModule } from './pages/contact/contact.module';
-import { NotFoundModule } from './pages/not-found/not-found.module';
-
-// Page components (import for routing only)
-import { MetricsComponent } from './pages/metrics/metrics.component';
-import { LogsComponent } from './pages/logs/logs.component';
-import { GraphqlComponent } from './pages/graphql/graphql.component';
-import { DatabaseComponent } from './pages/database/database.component';
-import { PerformanceComponent } from './pages/performance/performance.component';
-import { AboutComponent } from './pages/about/about.component';
-import { ContactComponent } from './pages/contact/contact.component';
-import { NotFoundComponent } from './pages/not-found/not-found.component';
-
-const routes: Routes = [
-  { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
-  { path: 'dashboard', component: DashboardComponent },
-  { path: 'metrics', component: MetricsComponent },
-  { path: 'logs', component: LogsComponent },
-  { path: 'graphql', component: GraphqlComponent },
-  { path: 'database', component: DatabaseComponent },
-  { path: 'performance', component: PerformanceComponent },
-  { path: 'about', component: AboutComponent },
-  { path: 'contact', component: ContactComponent },
-  { path: '**', component: NotFoundComponent }
-];
-
-// Factory function for APP_INITIALIZER
-export function initializeWebSocketStreams(wsRegistrationService: WebSocketRegistrationService) {
-  return () => {
-    return wsRegistrationService.initializeDataStreams();
-  };
-}
+import { PerformanceService } from './services/performance.service';
 
 @NgModule({
-  declarations: [
-    AppComponent
-  ],
+  declarations: [AppComponent],
   imports: [
     BrowserModule,
     BrowserAnimationsModule,
+    RouterModule,
+    FormsModule,
+    ReactiveFormsModule,
     HttpClientModule,
-    RouterModule.forRoot(routes),
+    AppRoutingModule,
+    MaterialModule,
     
-    // Material modules
-    MatToolbarModule,
-    MatButtonModule,
-    MatSidenavModule,
-    MatIconModule,
-    MatListModule,
-    MatCardModule,
-    
-    // Feature modules
+    // Layout modules
+    LayoutModule,
     TopNavModule,
     FooterModule,
+    
+    // Directive modules
     DirectivesModule,
     
-    // Page modules
-    DashboardModule,
-    MetricsModule,
-    LogsModule,
-    GraphqlModule,
-    DatabaseModule,
-    PerformanceModule,
-    AboutModule,
-    ContactModule,
-    NotFoundModule,
-    
-    // Component modules
+    // Component modules for shared components
+    MetricsTileModule,
+    DatabaseTileModule,
+    GraphQLTileModule,
+    PerformanceTileModule,
+    LogViewerModule,
+    ConnectionIndicatorModule,
+    StreamStatusIndicatorModule,
+    LogFeedModule,
     UserStateModule,
     UserGraphModule
   ],
   providers: [
+    // Register all services
+    MetricsService,
     LoggerService,
     WebSocketService,
     WebSocketRegistrationService,
-    MetricsService,
-    PerformanceService,
+    MetricsApiService,
+    MetricsSocketService,
+    DatabaseService,
     UserStateService,
-    {
-      provide: APP_INITIALIZER,
-      useFactory: initializeWebSocketStreams,
-      deps: [WebSocketRegistrationService],
-      multi: true
-    }
+    PerformanceService
   ],
   bootstrap: [AppComponent]
 })

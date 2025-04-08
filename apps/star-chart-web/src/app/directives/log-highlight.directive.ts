@@ -1,34 +1,46 @@
-import { Directive, ElementRef, Input, OnInit } from '@angular/core';
+import { Directive, ElementRef, Input, OnChanges, SimpleChanges } from '@angular/core';
 
 @Directive({
   selector: '[appLogHighlight]'
 })
-export class LogHighlightDirective implements OnInit {
-  @Input() category: keyof typeof this.colorMap = '';
-  
-  private colorMap: { [key: string]: string } = {
-    websocket: '#6a1b9a', // Purple
-    http: '#00897b', // Teal
-    router: '#ff5722', // Deep Orange
-    auth: '#ffc107', // Amber
-    database: '#3f51b5', // Indigo
-    user: '#795548', // Brown
-    metrics: '#009688', // Teal
-    api: '#e91e63' // Pink
+export class LogHighlightDirective implements OnChanges {
+  @Input() appLogHighlight: string = '';
+  @Input() category: string = '';
+
+  private readonly categoryColors: Record<string, string> = {
+    error: '#ffebee',
+    warning: '#fff8e1',
+    info: '#e1f5fe',
+    debug: '#f5f5f5',
+    api: '#e8f5e9',
+    frontend: '#e8eaf6',
+    database: '#f3e5f5',
+    websocket: '#e0f7fa'
   };
 
   constructor(private el: ElementRef) {}
 
-  ngOnInit() {
-    if (this.category) {
-      const colorKey = typeof this.category === 'string' ? this.category.toLowerCase() : '';
-      const color = this.colorMap[colorKey] || '#757575';
-      this.el.nativeElement.style.backgroundColor = `${color}20`; // Add transparency
-      this.el.nativeElement.style.color = color;
-      this.el.nativeElement.style.padding = '2px 6px';
-      this.el.nativeElement.style.borderRadius = '4px';
-      this.el.nativeElement.style.display = 'inline-block';
-      this.el.nativeElement.style.fontWeight = '500';
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['appLogHighlight'] || changes['category']) {
+      this.highlightLog();
+    }
+  }
+
+  private highlightLog(): void {
+    // Determine which style to apply based on the level or category
+    const element = this.el.nativeElement;
+    const level = this.appLogHighlight.toLowerCase();
+    const backgroundColor = this.categoryColors[level] || 
+                           this.categoryColors[this.category] || 
+                           'transparent';
+    
+    // Apply the styles
+    element.style.backgroundColor = backgroundColor;
+    
+    // Add extra styling for errors
+    if (level === 'error') {
+      element.style.fontWeight = 'bold';
+      element.style.borderLeft = '4px solid #f44336';
     }
   }
 }

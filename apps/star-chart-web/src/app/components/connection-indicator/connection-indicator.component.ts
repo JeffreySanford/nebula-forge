@@ -1,40 +1,40 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
-import { WebSocketService } from '../../services/websocket.service';
-import { Observable, Subscription } from 'rxjs';
+import { Component, Input } from '@angular/core';
 
 @Component({
   selector: 'app-connection-indicator',
-  templateUrl: './connection-indicator.component.html',
-  styleUrls: ['./connection-indicator.component.scss']
-})
-export class ConnectionIndicatorComponent implements OnInit, OnDestroy {
-  isConnected$: Observable<boolean>;
-  isMockMode = false;
-  connectionState = 'disconnected';
-  private subscription: Subscription | null = null;
-  
-  constructor(public wsService: WebSocketService) {
-    this.isConnected$ = this.wsService.connectionStatus$;
-  }
-  
-  ngOnInit(): void {
-    // Subscribe to mock mode changes
-    this.subscription = this.wsService.getMockModeChanges().subscribe(isMock => {
-      this.isMockMode = isMock;
-    });
-    
-    // Get initial mock mode state
-    this.isMockMode = this.wsService.isMockMode();
-  }
-  
-  ngOnDestroy(): void {
-    if (this.subscription) {
-      this.subscription.unsubscribe();
+  template: `
+    <div class="connection-indicator" [ngClass]="{'connected': connected}">
+      <div class="status-dot"></div>
+      <span class="status-text">{{ connected ? 'Connected' : 'Disconnected' }}</span>
+    </div>
+  `,
+  styles: [`
+    .connection-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.25rem 0.5rem;
+      font-size: 0.8rem;
     }
-  }
-  
-  // Manually trigger a reconnection attempt
-  retryConnection(): void {
-    this.wsService.forceReconnect();
-  }
+    
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: #f44336;
+      transition: background-color 0.3s ease;
+    }
+    
+    .connected .status-dot {
+      background-color: #4caf50;
+      box-shadow: 0 0 5px rgba(76, 175, 80, 0.5);
+    }
+    
+    .status-text {
+      color: rgba(255, 255, 255, 0.7);
+    }
+  `]
+})
+export class ConnectionIndicatorComponent {
+  @Input() connected = false;
 }

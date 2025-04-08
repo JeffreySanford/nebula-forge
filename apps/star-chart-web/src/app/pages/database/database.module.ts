@@ -1,16 +1,17 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DatabaseComponent } from './database.component';
-import { MatCardModule } from '@angular/material/card';
+import { DatabaseRoutingModule } from './database-routing.module';
 import { DatabaseTileModule } from '../../components/database-tile/database-tile.module';
+import { MatCardModule } from '@angular/material/card';
 
 @NgModule({
   declarations: [DatabaseComponent],
   imports: [
     CommonModule,
+    DatabaseRoutingModule,
     MatCardModule,
     DatabaseTileModule
-  ],
-  exports: [DatabaseComponent]
+  ]
 })
-export class DatabaseModule {}
+export class DatabaseModule { }

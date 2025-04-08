@@ -1,29 +1,48 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
-import { DashboardComponent } from './pages/dashboard/dashboard.component';
-import { LogsComponent } from './pages/logs/logs.component';
-import { GraphqlComponent } from './pages/graphql/graphql.component';
-import { DatabaseComponent } from './pages/database/database.component';
-import { PerformanceComponent } from './pages/performance/performance.component';
-import { NotFoundComponent } from './pages/not-found/not-found.component';
 
 const routes: Routes = [
-  { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
-  { path: 'dashboard', component: DashboardComponent },
-  { 
-    path: 'metrics', 
-    loadChildren: () => import('./views/metrics-view/metrics-view.module')
-      .then(m => m.MetricsViewModule) 
+  {
+    path: '',
+    pathMatch: 'full',
+    redirectTo: 'dashboard'
   },
-  { path: 'logs', component: LogsComponent },
-  { path: 'graphql', component: GraphqlComponent },
-  { path: 'database', component: DatabaseComponent },
-  { path: 'performance', component: PerformanceComponent },
-  { path: '**', component: NotFoundComponent }
+  {
+    path: 'dashboard',
+    loadChildren: () => import('./pages/dashboard/dashboard.module').then(m => m.DashboardModule)
+  },
+  {
+    path: 'metrics',
+    loadChildren: () => import('./pages/metrics/metrics.module').then(m => m.MetricsModule)
+  },
+  {
+    path: 'performance',
+    loadChildren: () => import('./pages/performance/performance.module').then(m => m.PerformanceModule)
+  },
+  {
+    path: 'logs',
+    loadChildren: () => import('./pages/logs/logs.module').then(m => m.LogsModule)
+  },
+  {
+    path: 'database',
+    loadChildren: () => import('./pages/database/database.module').then(m => m.DatabaseModule)
+  },
+  {
+    path: 'graphql',
+    loadChildren: () => import('./pages/graphql/graphql.module').then(m => m.GraphqlModule)
+  },
+  {
+    path: '**',
+    redirectTo: 'dashboard'
+  }
 ];
 
 @NgModule({
-  imports: [RouterModule.forRoot(routes, { enableTracing: false })],
+  imports: [RouterModule.forRoot(routes, { 
+    initialNavigation: 'enabledBlocking',
+    useHash: false,
+    enableTracing: false
+  })],
   exports: [RouterModule]
 })
 export class AppRoutingModule { }

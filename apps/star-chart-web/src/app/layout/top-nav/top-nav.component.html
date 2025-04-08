@@ -8,19 +8,16 @@
        routerLinkActive="active">{{ item.label }}</a>
   </span>
   
-  <!-- Mock data toggle -->
-  <div class="mock-toggle-container">
-    <span class="mock-label">Live</span>
+  <!-- Mock data toggle with enhanced styling -->
+  <div class="mock-toggle-container" [ngClass]="useMockData ? 'mock-mode' : 'live-mode'">
+    <span class="mock-label live">Live</span>
     <mat-slide-toggle 
       [checked]="useMockData" 
       (change)="toggleMockData($event)"
       color="accent">
     </mat-slide-toggle>
-    <span class="mock-label">Mock</span>
+    <span class="mock-label mock">Mock</span>
   </div>
-  
-  <!-- Add connection status indicator -->
-  <app-connection-indicator class="connection-status-indicator"></app-connection-indicator>
   
   <!-- Mobile navigation -->
   <button mat-icon-button class="mobile-menu-button" [matMenuTriggerFor]="menu">
@@ -32,9 +29,10 @@
        routerLinkActive="active">{{ item.label }}</a>
     <mat-divider></mat-divider>
     <button mat-menu-item (click)="toggleMockData()">
-      <mat-icon>{{ useMockData ? 'sync_disabled' : 'sync' }}</mat-icon>
+      <mat-icon [ngStyle]="{'color': useMockData ? '#F44336' : '#4CAF50'}">
+        {{ useMockData ? 'sync_disabled' : 'sync' }}
+      </mat-icon>
       <span>{{ useMockData ? 'Use Live Data' : 'Use Mock Data' }}</span>
     </button>
   </mat-menu>
 </mat-toolbar>
-<router-outlet></router-outlet>

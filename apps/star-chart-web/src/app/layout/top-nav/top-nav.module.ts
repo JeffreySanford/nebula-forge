@@ -8,7 +8,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatDividerModule } from '@angular/material/divider';
 import { TopNavComponent } from './top-nav.component';
-import { ConnectionIndicatorModule } from '../../components/connection-indicator/connection-indicator.module';
 
 @NgModule({
   declarations: [TopNavComponent],
@@ -20,8 +19,7 @@ import { ConnectionIndicatorModule } from '../../components/connection-indicator
     MatMenuModule,
     MatIconModule,
     MatSlideToggleModule,
-    MatDividerModule,
-    ConnectionIndicatorModule
+    MatDividerModule
   ],
   exports: [TopNavComponent]
 })

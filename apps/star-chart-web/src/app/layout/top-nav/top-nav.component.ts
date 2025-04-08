@@ -8,12 +8,11 @@ import { MatSlideToggleChange } from '@angular/material/slide-toggle';
   styleUrls: ['./top-nav.component.scss']
 })
 export class TopNavComponent implements OnInit {
-  // Updated navigationItems without About and Contact
   navigationItems = [
     { path: '/dashboard', label: 'Dashboard' },
-    { path: '/logs', label: 'Logs' },
     { path: '/metrics', label: 'Metrics' },
     { path: '/performance', label: 'Performance' },
+    { path: '/logs', label: 'Logs' },
     { path: '/database', label: 'Database' },
     { path: '/graphql', label: 'GraphQL' }
   ];

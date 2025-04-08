@@ -1,0 +1,155 @@
+<div class="database-view-container" @fadeIn>
+  <div class="header-section">
+    <h1 class="gradient-text">Historical Metrics Database</h1>
+    <p class="description">
+      View and analyze historical metric data from the database
+    </p>
+  </div>
+  
+  <div class="filter-section" [ngClass]="{'pulse': newDataReceived}" @pulseAnimation>
+    <mat-card>
+      <mat-card-content>
+        <div class="filter-row">
+          <div class="filter-column">
+            <mat-form-field appearance="fill">
+              <mat-label>Metric Type</mat-label>
+              <mat-select [formControl]="selectedMetricType">
+                <mat-option *ngFor="let type of metricTypes" [value]="type.value">
+                  {{ type.label }}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+          
+          <div class="filter-column" *ngIf="!showCustomTimespan">
+            <mat-form-field appearance="fill">
+              <mat-label>Time Range</mat-label>
+              <mat-select [formControl]="selectedTimeRange">
+                <mat-option *ngFor="let range of timeRanges" [value]="range.value">
+                  {{ range.label }}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+          
+          <div class="filter-column" *ngIf="showCustomTimespan">
+            <mat-form-field appearance="fill">
+              <mat-label>Minutes</mat-label>
+              <input matInput type="number" [formControl]="customTimespan" min="1" max="10080">
+              <mat-hint>Last X minutes of data</mat-hint>
+            </mat-form-field>
+          </div>
+          
+          <div class="filter-column toggle-column">
+            <mat-slide-toggle [checked]="showCustomTimespan" (change)="toggleCustomTimespan($event)">
+              Custom Timespan
+            </mat-slide-toggle>
+          </div>
+          
+          <div class="action-column">
+            <button mat-raised-button color="primary" (click)="refreshData()" [disabled]="isLoading">
+              <mat-icon>refresh</mat-icon> Refresh Data
+            </button>
+          </div>
+        </div>
+        
+        <div *ngIf="lastUpdated" class="last-updated">
+          Last updated: {{ lastUpdated | date:'medium' }}
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+  
+  <div class="metrics-section">
+    <mat-card *ngIf="isLoading" class="loading-card">
+      <mat-card-content>
+        <div class="loading-container">
+          <mat-spinner diameter="50"></mat-spinner>
+          <p>Loading metrics data...</p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+    
+    <div *ngIf="error" class="error-message">
+      <mat-icon>error</mat-icon>
+      <span>{{ error }}</span>
+    </div>
+    
+    <ng-container *ngIf="historicalMetrics$ | async as historicalData">
+      <div class="metrics-header">
+        <h2>{{ selectedMetricType.value | titlecase }} Metrics</h2>
+        <div class="metrics-info">
+          <span class="range-info">{{ historicalData.range | titlecase }} Range</span>
+          <span class="date-range">
+            {{ formatTimestamp(historicalData.startDate) }} - 
+            {{ formatTimestamp(historicalData.endDate) }}
+          </span>
+        </div>
+      </div>
+      
+      <!-- Charts Section -->
+      <div class="chart-section">
+        <!-- Add chart component here -->
+        <div class="metrics-chart">
+          <div class="chart-placeholder">
+            <!-- In a real app, this would be a real chart library -->
+            <div class="chart-visualization">
+              <div *ngFor="let metric of historicalData.metrics" 
+                   class="chart-bar" 
+                   [style.height.%]="(metric.value / 100) * 80 + 20"
+                   [style.background]="getGradientStyle(getChartColor(metric))">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Data Table -->
+      <mat-card class="metrics-table-card">
+        <mat-card-content>
+          <table mat-table [dataSource]="historicalData.metrics" class="metrics-table">
+            <!-- Timestamp Column -->
+            <ng-container matColumnDef="timestamp">
+              <th mat-header-cell *matHeaderCellDef>Timestamp</th>
+              <td mat-cell *matCellDef="let metric" 
+                  [ngClass]="{'highlight-cell': newDataReceived}">
+                {{ formatTimestamp(metric.timestamp) }}
+              </td>
+            </ng-container>
+            
+            <!-- Value Column -->
+            <ng-container matColumnDef="value">
+              <th mat-header-cell *matHeaderCellDef>Value</th>
+              <td mat-cell *matCellDef="let metric" 
+                  [ngClass]="{'highlight-cell': newDataReceived}">
+                <span class="metric-value" 
+                      [style.color]="getChartColor(metric)">
+                  {{ formatMetricValue(metric) }}
+                </span>
+              </td>
+            </ng-container>
+            
+            <!-- Source Column -->
+            <ng-container matColumnDef="source">
+              <th mat-header-cell *matHeaderCellDef>Source</th>
+              <td mat-cell *matCellDef="let metric"
+                  [ngClass]="{'highlight-cell': newDataReceived}">
+                {{ metric.source }}
+              </td>
+            </ng-container>
+            
+            <tr mat-header-row *matHeaderRowDef="['timestamp', 'value', 'source']"></tr>
+            <tr mat-row *matRowDef="let row; columns: ['timestamp', 'value', 'source'];"
+                [ngClass]="{'new-data-row': newDataReceived}"
+                @listAnimation></tr>
+          </table>
+          
+          <div *ngIf="historicalData.metrics.length === 0" class="no-data">
+            <mat-icon>info</mat-icon>
+            <p>No metrics data available for this time range.</p>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </ng-container>
+  </div>
+</div>

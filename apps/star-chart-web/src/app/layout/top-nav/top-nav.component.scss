@@ -54,20 +54,64 @@
   align-items: center;
   margin-left: auto;
   margin-right: 20px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background-color: rgba(0, 0, 0, 0.2); // Background with 20% opacity black
+  transition: all 0.3s ease-in-out;
+  
+  &.live-mode {
+    box-shadow: 0 0 10px 2px rgba(76, 175, 80, 0.7); // Increased opacity for better contrast
+    background-color: rgba(0, 0, 0, 0.3); // Darker background when in live mode
+  }
+  
+  &.mock-mode {
+    box-shadow: 0 0 10px 2px rgba(244, 67, 54, 0.7); // Increased opacity for better contrast
+    background-color: rgba(0, 0, 0, 0.3); // Darker background when in mock mode
+    animation: pulse-red 2s infinite;
+  }
 }
 
 .mock-label {
   font-size: 0.8rem;
   margin: 0 8px;
-  color: rgba(255, 255, 255, 0.7);
+  font-weight: 600; // Increased font weight for better contrast
+  transition: all 0.3s ease;
   
-  &:first-child {
+  &.live {
     color: #4CAF50; // Green for "Live"
+    opacity: 0.9; // Increased base opacity for better visibility
+    text-shadow: 0 0 3px rgba(0, 0, 0, 0.3); // Text shadow for contrast against background
+    
+    .live-mode & {
+      opacity: 1;
+      color: #69F0AE; // Brighter green when active
+      text-shadow: 0 0 5px rgba(105, 240, 174, 0.9);
+    }
   }
   
-  &:last-child {
+  &.mock {
     color: #FF9800; // Orange for "Mock"
+    opacity: 0.9; // Increased base opacity for better visibility
+    text-shadow: 0 0 3px rgba(0, 0, 0, 0.3); // Text shadow for contrast against background
+    
+    .mock-mode & {
+      opacity: 1;
+      color: #FF5252; // Brighter red when active
+      text-shadow: 0 0 5px rgba(255, 82, 82, 0.9);
+    }
   }
+}
+
+@keyframes pulse-red {
+  0% { box-shadow: 0 0 10px 2px rgba(244, 67, 54, 0.7); }
+  50% { box-shadow: 0 0 15px 5px rgba(244, 67, 54, 0.9); }
+  100% { box-shadow: 0 0 10px 2px rgba(244, 67, 54, 0.7); }
+}
+
+@keyframes pulse-green {
+  0% { box-shadow: 0 0 10px 2px rgba(76, 175, 80, 0.7); }
+  50% { box-shadow: 0 0 15px 5px rgba(76, 175, 80, 0.9); }
+  100% { box-shadow: 0 0 10px 2px rgba(76, 175, 80, 0.7); }
 }
 
 /* Responsive behavior */
