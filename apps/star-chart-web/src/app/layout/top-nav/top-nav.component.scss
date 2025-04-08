@@ -49,6 +49,27 @@
   font-weight: bold;
 }
 
+.mock-toggle-container {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  margin-right: 20px;
+}
+
+.mock-label {
+  font-size: 0.8rem;
+  margin: 0 8px;
+  color: rgba(255, 255, 255, 0.7);
+  
+  &:first-child {
+    color: #4CAF50; // Green for "Live"
+  }
+  
+  &:last-child {
+    color: #FF9800; // Orange for "Mock"
+  }
+}
+
 /* Responsive behavior */
 .mobile-menu-button {
   display: none;
@@ -65,5 +86,9 @@
   
   .nav-toolbar {
     padding: 0 1rem;
+  }
+  
+  .mock-toggle-container {
+    display: none; // Hide toggle on mobile, use menu item instead
   }
 }

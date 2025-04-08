@@ -23,6 +23,9 @@ export class PerformanceComponent implements OnInit, OnDestroy {
   webSocketStats$: Observable<WebSocketStats>; // Add observable for WebSocket stats
   private subscriptions: Subscription[] = [];
 
+  // Add property for section color
+  sectionColor = '#FF5722'; // Default performance color (Deep Orange)
+
   // Inject services
   constructor(
     private performanceService: PerformanceService,
@@ -45,11 +48,32 @@ export class PerformanceComponent implements OnInit, OnDestroy {
     );
     // Optionally request historical data if needed on init
     // this.performanceService.requestMetricsHistory(60);
+
+    // Subscribe to section colors to get the performance section color
+    this.subscriptions.push(
+      this.webSocketService.subscribe<Record<string, string>>('section-colors').subscribe(
+        colors => {
+          if (colors && colors['performance']) {
+            this.sectionColor = colors['performance'];
+            this.logger.debug('Performance', 'Received performance section color', { color: colors['performance'] });
+            
+            // Apply section color to the component's styles
+            this.applyThemeColor(this.sectionColor);
+          }
+        }
+      )
+    );
   }
 
   ngOnDestroy(): void {
     this.subscriptions.forEach(sub => sub.unsubscribe());
     this.logger.info('PerformanceComponent', 'Performance page destroyed.');
+  }
+
+  // Method to apply theme color to component styles
+  private applyThemeColor(color: string): void {
+    document.documentElement.style.setProperty('--performance-primary-color', color);
+    document.documentElement.style.setProperty('--performance-light-color', `${color}20`);
   }
 
   // Helper to get color based on metric name or value (example)

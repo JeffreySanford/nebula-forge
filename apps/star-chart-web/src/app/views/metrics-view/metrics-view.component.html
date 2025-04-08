@@ -1,0 +1,148 @@
+<div class="metrics-view-container">
+  <div class="metrics-header">
+    <h1 class="metrics-title">Metrics Dashboard</h1>
+    
+    <!-- Add Stream Status Indicator Component -->
+    <app-stream-status-indicator class="stream-status-container"></app-stream-status-indicator>
+    
+    <div class="connection-controls">
+      <div class="connection-status" [ngClass]="{'connected': (wsConnected$ | async)}">
+        <div class="status-dot"></div>
+        <span>{{ (wsConnected$ | async) ? 'Connected' : 'Disconnected' }}</span>
+      </div>
+      
+      <div class="mock-toggle">
+        <mat-slide-toggle 
+          [checked]="isMockMode" 
+          (change)="toggleMockMode()"
+          color="accent">
+          Mock Data Mode
+        </mat-slide-toggle>
+      </div>
+      
+      <button mat-raised-button color="primary" (click)="refreshRegistrations()">
+        <mat-icon>refresh</mat-icon> Refresh Registrations
+      </button>
+    </div>
+  </div>
+  
+  <div class="metrics-content">
+    <!-- Stream Registration Status -->
+    <mat-card class="card stream-status-card">
+      <mat-card-header>
+        <mat-card-title>WebSocket Stream Registrations</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="streams-grid">
+          <div *ngFor="let stream of streams" class="stream-item">
+            <div class="stream-status-circle" [ngClass]="getStreamStatusClass(stream)"
+                 [matTooltip]="stream.registered ? (stream.isMock ? 'Registered (Mock Data)' : 'Registered (Live Data)') : 'Not Registered'">
+            </div>
+            <div class="stream-info">
+              <div class="stream-name">{{ stream.displayName }}</div>
+              <div class="stream-details">{{ stream.description }}</div>
+              <div class="stream-timestamp" *ngIf="stream.lastUpdated">
+                Last updated: {{ stream.lastUpdated | date:'medium' }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+    
+    <!-- System Metrics -->
+    <mat-card class="card system-metrics-card" [ngClass]="{'mock-data': streams[0].isMock}">
+      <mat-card-header>
+        <mat-card-title>System Metrics</mat-card-title>
+        <div class="data-type-badge" *ngIf="streams[0].isMock">MOCK DATA</div>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="metrics-grid">
+          <div *ngFor="let metric of systemMetrics" class="metric-box">
+            <div class="metric-label">{{ metric.name }}</div>
+            <div class="metric-value">{{ metric.value }} <span class="metric-unit">{{ metric.unit }}</span></div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+    
+    <!-- Performance Metrics -->
+    <mat-card class="card performance-metrics-card" [ngClass]="{'mock-data': streams[1].isMock}">
+      <mat-card-header>
+        <mat-card-title>Performance Metrics</mat-card-title>
+        <div class="data-type-badge" *ngIf="streams[1].isMock">MOCK DATA</div>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="metrics-grid">
+          <div *ngFor="let metric of performanceMetrics" class="metric-box">
+            <div class="metric-label">{{ metric.name }}</div>
+            <div class="metric-value">{{ metric.value }} <span class="metric-unit">{{ metric.unit }}</span></div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+    
+    <!-- Health Metrics -->
+    <mat-card class="card health-metrics-card" [ngClass]="{'mock-data': streams[2].isMock}">
+      <mat-card-header>
+        <mat-card-title>Health Metrics</mat-card-title>
+        <div class="data-type-badge" *ngIf="streams[2].isMock">MOCK DATA</div>
+      </mat-card-header>
+      <mat-card-content *ngIf="healthMetrics.servers">
+        <div class="health-category">
+          <h3>Servers</h3>
+          <div class="health-items">
+            <div *ngFor="let server of healthMetrics.servers" class="health-item">
+              <div class="health-status" [ngClass]="server.status">
+                <mat-icon>{{ server.status === 'healthy' ? 'check_circle' : server.status === 'warning' ? 'warning' : 'error' }}</mat-icon>
+              </div>
+              <div class="health-details">
+                <div class="health-name">{{ server.name }}</div>
+                <div class="health-stats">
+                  <span>Load: {{ server.load }}%</span>
+                  <span>Uptime: {{ server.uptime }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="health-category">
+          <h3>Databases</h3>
+          <div class="health-items">
+            <div *ngFor="let db of healthMetrics.databases" class="health-item">
+              <div class="health-status" [ngClass]="db.status">
+                <mat-icon>{{ db.status === 'healthy' ? 'check_circle' : db.status === 'warning' ? 'warning' : 'error' }}</mat-icon>
+              </div>
+              <div class="health-details">
+                <div class="health-name">{{ db.name }}</div>
+                <div class="health-stats">
+                  <span>Connections: {{ db.connections }}</span>
+                  <span>Latency: {{ db.latency }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="health-category">
+          <h3>Services</h3>
+          <div class="health-items">
+            <div *ngFor="let service of healthMetrics.services" class="health-item">
+              <div class="health-status" [ngClass]="service.status">
+                <mat-icon>{{ service.status === 'healthy' ? 'check_circle' : service.status === 'warning' ? 'warning' : 'error' }}</mat-icon>
+              </div>
+              <div class="health-details">
+                <div class="health-name">{{ service.name }}</div>
+                <div class="health-stats">
+                  <span>Requests: {{ service.requests | number }}</span>
+                  <span>Error Rate: {{ service.errorRate }}%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

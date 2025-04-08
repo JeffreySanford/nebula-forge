@@ -2,8 +2,9 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import { trigger, transition, style, animate, query, stagger } from '@angular/animations';
 import { MetricsService, SystemStatus } from '../../services/metrics.service';
-import { Observable, Subscription } from 'rxjs';
+import { Observable, Subscription, interval } from 'rxjs';
 import { WebSocketService } from '../../services/websocket.service';
+import { LoggerService } from '../../services/logger.service';
 
 interface BrowserData {
   name: string;
@@ -110,11 +111,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
   constructor(
     private router: Router,
     private metricsService: MetricsService,
-    private wsService: WebSocketService
+    public wsService: WebSocketService, 
+    private logger: LoggerService
   ) {
     // Initialize with hot observables for real-time data
     this.systemStatus$ = this.metricsService.getSystemStatus();
-    this.wsConnected$ = this.wsService.connectionStatus$;
+    this.wsConnected$ = this.wsService.connectionStatus$; // Use the public observable
     
     // Set up reconnection handler for dashboard data
     this.wsService.onReconnected(() => {
@@ -127,6 +129,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
   systemStatusIsMock = true;
   healthMetricsIsMock = true;
   frontendMetricsIsMock = true;
+  
+  // Track data refresh
+  lastDataRefresh = new Date();
+  refreshInterval: Subscription | null = null;
+
+  // Add property to store health section color
+  healthSectionColor = '#00BCD4'; // Default cyan color
+
+  // Add properties to track registration status
+  streamRegistrations = new Map<string, boolean>();
+  allStreamsRegistered = false;
 
   ngOnInit(): void {
     // Request initial data
@@ -159,14 +172,33 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.wsService.subscribe<any>('health-metrics').subscribe(
         data => {
           if (data) {
+            this.logger.debug('Dashboard', 'Received health metrics', { data });
             this.healthMetrics = {
               servers: data.servers || this.healthMetrics.servers,
               databases: data.databases || this.healthMetrics.databases,
               services: data.services || this.healthMetrics.services
             };
             
+            // Update the health section color if provided
+            if (data.sectionColor) {
+              this.healthSectionColor = data.sectionColor;
+            }
+            
             // Check if this is mock data
             this.healthMetricsIsMock = data.isMock === true;
+          }
+        },
+        error => this.logger.error('Dashboard', 'Error receiving health metrics', { error })
+      )
+    );
+
+    // Subscribe to section colors to get health color
+    this.subscriptions.push(
+      this.wsService.subscribe<Record<string, string>>('section-colors').subscribe(
+        colors => {
+          if (colors && colors['health']) {
+            this.healthSectionColor = colors['health'];
+            this.logger.debug('Dashboard', 'Received health section color', { color: colors['health'] });
           }
         }
       )
@@ -181,11 +213,51 @@ export class DashboardComponent implements OnInit, OnDestroy {
         }
       })
     );
+    
+    // Setup refresh indicator for live data
+    this.refreshInterval = interval(1000).subscribe(() => {
+      // Only update if we're not in mock mode
+      if (!this.wsService.isMockMode()) {
+        this.lastDataRefresh = new Date();
+      }
+    });
+    
+    // Log mode changes
+    this.wsService.getMockModeChanges().subscribe(isMockMode => {
+      this.logger.info('Dashboard', `Data mode changed to ${isMockMode ? 'MOCK' : 'LIVE'}`);
+      
+      // Force data refresh when switching to live mode
+      if (!isMockMode) {
+        this.requestLiveData();
+      }
+    });
+
+    // Track registration acknowledgements more robustly
+    this.subscriptions.push(
+      this.wsService.getRegisteredStreams().subscribe(streams => {
+        // Log registration status
+        this.logger.info('Dashboard', 'Stream registrations updated', {
+          registered: streams,
+          allRegistered: this.checkAllRequiredStreamsRegistered(streams)
+        });
+
+        // Update registration status indicators
+        this.streamRegistrations = new Map();
+        streams.forEach(stream => this.streamRegistrations.set(stream, true));
+        
+        // Check if all required streams are registered
+        this.allStreamsRegistered = this.checkAllRequiredStreamsRegistered(streams);
+      })
+    );
   }
   
   ngOnDestroy(): void {
     // Clean up subscriptions
     this.subscriptions.forEach(sub => sub.unsubscribe());
+    
+    if (this.refreshInterval) {
+      this.refreshInterval.unsubscribe();
+    }
   }
 
   navigateTo(route: string): void {
@@ -210,5 +282,37 @@ export class DashboardComponent implements OnInit, OnDestroy {
       { name: 'Safari', share: this.frontendStatus.browserShare.safari, color: '#2196f3' },
       { name: 'Edge', share: this.frontendStatus.browserShare.edge, color: '#3f51b5' }
     ];
+  }
+  
+  // Add method to manually request live data
+  requestLiveData(): void {
+    this.logger.info('Dashboard', 'Manually requesting live data');
+    this.metricsService.requestMetricsByType('frontend');
+    this.metricsService.requestMetricsByType('system');
+    this.wsService.sendMessage({
+      action: 'request-refresh',
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  // Add method to get status color based on status and health color
+  getStatusColor(status: string): string {
+    switch (status.toLowerCase()) {
+      case 'healthy': return '#4CAF50'; // Green
+      case 'warning': return '#FF9800'; // Orange
+      case 'error': return '#F44336'; // Red
+      default: return this.healthSectionColor; // Use health section color as default
+    }
+  }
+
+  // Add method to check if a specific stream is registered
+  isStreamRegistered(stream: string): boolean {
+    return this.streamRegistrations.get(stream) === true;
+  }
+
+  // Add a method to check if all required streams are registered
+  private checkAllRequiredStreamsRegistered(registeredStreams: string[]): boolean {
+    const requiredStreams = ['health-metrics', 'metrics', 'performance-metrics'];
+    return requiredStreams.every(stream => registeredStreams.includes(stream));
   }
 }

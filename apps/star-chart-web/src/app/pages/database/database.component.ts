@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { WebSocketService } from '../../services/websocket.service';
+import { LoggerService } from '../../services/logger.service';
 import { BehaviorSubject, Subscription } from 'rxjs';
 
 interface DatabaseMetric {
@@ -57,9 +58,14 @@ export class DatabaseComponent implements OnInit, OnDestroy {
   // Track mock data status
   isMockData = true;
   
+  // Add property for section color
+  sectionColor = '#9C27B0'; // Default database color (Purple)
   private subscriptions: Subscription[] = [];
   
-  constructor(private wsService: WebSocketService) {}
+  constructor(
+    private wsService: WebSocketService,
+    private logger: LoggerService
+  ) {}
   
   ngOnInit(): void {
     // Subscribe to database metrics
@@ -98,6 +104,21 @@ export class DatabaseComponent implements OnInit, OnDestroy {
                           (data.metrics?.some((m: any) => m.isMock));
         }
       })
+    );
+    
+    // Subscribe to section colors to get the database section color
+    this.subscriptions.push(
+      this.wsService.subscribe<Record<string, string>>('section-colors').subscribe(
+        colors => {
+          if (colors && colors['database']) {
+            this.sectionColor = colors['database'];
+            this.logger.debug('Database', 'Received database section color', { color: colors['database'] });
+            
+            // Apply section color to the component's styles
+            this.applyThemeColor(this.sectionColor);
+          }
+        }
+      )
     );
     
     // Initialize with mock data
@@ -216,5 +237,11 @@ export class DatabaseComponent implements OnInit, OnDestroy {
     }
     
     return 'unknown';
+  }
+  
+  // Method to apply theme color to component styles
+  private applyThemeColor(color: string): void {
+    document.documentElement.style.setProperty('--database-primary-color', color);
+    document.documentElement.style.setProperty('--database-light-color', `${color}20`);
   }
 }

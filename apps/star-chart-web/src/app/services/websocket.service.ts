@@ -1,9 +1,9 @@
 import { Injectable, OnDestroy } from '@angular/core';
-import { Observable, Subject, BehaviorSubject, Subscription, timer, of, interval } from 'rxjs';
-import { webSocket, WebSocketSubject, WebSocketSubjectConfig } from 'rxjs/webSocket';
-import { environment } from '../../environments/environment';
-import { tap, filter, catchError, delay, map, retryWhen, take, concat } from 'rxjs/operators';
+import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
+import { Observable, Subject, BehaviorSubject, Subscription, timer, of } from 'rxjs';
+import { catchError, tap, delay, retryWhen, switchMap, takeUntil, map, filter } from 'rxjs/operators'; // Add missing operators
 import { LoggerService } from './logger.service';
+import { environment } from '../../environments/environment';
 
 // Define interface for stats
 export interface WebSocketStats {
@@ -21,357 +21,310 @@ export class WebSocketService implements OnDestroy {
   private mainSubscription: Subscription | null = null;
   private reconnectionAttempt: number = 0;
   private maxReconnectionAttempts: number = environment.webSocket?.reconnectionAttempts || 5;
-  private maxReconnectionDelay: number = environment.webSocket?.maxReconnectDelay || 60000;
-  private initialReconnectionDelay: number = environment.webSocket?.initialReconnectDelay || 5000;
-  private reconnectEnabled: boolean = environment.webSocket?.reconnectEnabled !== false;
-  private mockDataSubscription: Subscription | null = null;
-
-  private messagesSubject = new Subject<any>();
-  private connectionStatus = new BehaviorSubject<boolean>(false);
-  private connectionState = new BehaviorSubject<'connecting' | 'connected' | 'disconnected' | 'error'>('disconnected');
-  private sentMessages: { [key: string]: Date } = {};
-
-  // Stats Tracking
-  private openedCount: number = 0;
-  private closedCount: number = 0;
-  private errorCount: number = 0;
-  private webSocketStatsSubject = new BehaviorSubject<WebSocketStats>({ open: 0, closed: 0, errors: 0, attempting: 0 });
+  private connectionTimeout: number = environment.webSocket?.connectionTimeout || 10000; // 10 seconds timeout
+  private wsUrl: string = environment.wsUrl;
+  
+  // Connection management
+  private connectionState = new BehaviorSubject<'connected' | 'disconnected' | 'connecting'>('disconnected');
+  // Make connectionStatus public so it can be accessed from dashboard
+  public connectionStatus = new BehaviorSubject<boolean>(false);
+  public connectionStatus$ = this.connectionStatus.asObservable(); // Add public observable
+  private reconnectSubject = new Subject<void>();
+  private reconnectionCallbacks: (() => void)[] = [];
+  
+  // Stats tracking
+  private webSocketStatsSubject = new BehaviorSubject<WebSocketStats>({
+    open: 0,
+    closed: 0,
+    errors: 0,
+    attempting: 0
+  });
   public webSocketStats$ = this.webSocketStatsSubject.asObservable();
-
+  
+  // Message handling
+  private messagesSubject = new BehaviorSubject<any>({});
   public messages$ = this.messagesSubject.asObservable();
-  public connectionStatus$ = this.connectionStatus.asObservable();
-  public connectionState$ = this.connectionState.asObservable();
-
+  
   // Track registered channels for mock mode
-  private registeredChannels: Set<string> = new Set();
-  private useMockMode: boolean = environment.useMockWebSocket;
+  private registeredChannels = new Set<string>();
+  
+  // Track mock mode status
+  private mockModeSubject = new BehaviorSubject<boolean>(false);
+  public mockMode$ = this.mockModeSubject.asObservable();
+  
+  // Add subject to track registration acknowledgements
+  private registrationAcks = new BehaviorSubject<Map<string, boolean>>(new Map());
+  public registrationAcks$ = this.registrationAcks.asObservable();
+  
+  // Track connection attempts
+  private connectionAttemptTimeout: any;
+  private forceDisconnected = false;
 
   constructor(private logger: LoggerService) {
-    this.logger.info('WebSocketService', 'WebSocket service initialized', { 
-      mockMode: this.useMockMode ? 'enabled' : 'disabled',
-      wsUrl: environment.wsUrl
+    // Check for stored mock mode preference
+    const storedMockMode = localStorage.getItem('useMockWebSocket');
+    const useMock = storedMockMode !== null ? storedMockMode === 'true' : environment.useMockWebSocket;
+    
+    this.logger.info('WebSocketService', 'WebSocket service initialized', {
+      mockMode: useMock ? 'enabled' : 'disabled',
+      wsUrl: this.wsUrl
     });
 
-    if (this.useMockMode) {
-      this.logger.info('WebSocketService', 'Starting in MOCK mode - no actual WebSocket connection will be attempted');
-      this.initMockMode();
-    } else if (environment.webSocket?.autoConnect !== false) {
-      this.connect();
+    // Start in mock mode initially for better user experience
+    this.mockModeSubject.next(true);
+    this.initializeMockMode();
+
+    // Then try to establish a real connection
+    if (!useMock) {
+      // Add short delay before attempting connection
+      setTimeout(() => {
+        this.logger.info('WebSocketService', 'Attempting real WebSocket connection');
+        this.mockModeSubject.next(false);
+        this.connect();
+      }, 500);
     }
   }
 
   ngOnDestroy(): void {
-    this.disconnect();
-    if (this.mockDataSubscription) {
-      this.mockDataSubscription.unsubscribe();
+    if (this.connectionAttemptTimeout) {
+      clearTimeout(this.connectionAttemptTimeout);
     }
+    
+    if (this.mainSubscription) {
+      this.mainSubscription.unsubscribe();
+    }
+    
+    this.disconnect();
+    this.reconnectSubject.complete();
   }
 
   private connect(): void {
-    if (this.useMockMode) {
-      this.logger.info('WebSocketService', 'Connect called but MOCK mode is active - no connection will be attempted');
+    if (this.socket$ || this.forceDisconnected) {
       return;
     }
 
-    if (!environment.wsUrl) {
-      this.logger.error('WebSocketService', 'WebSocket URL is not defined in environment');
-      this.connectionState.next('error');
+    // Don't attempt connection if in mock mode
+    if (this.mockModeSubject.getValue()) {
+      this.logger.info('WebSocketService', 'Not connecting: in mock mode');
       return;
     }
 
-    this.unsubscribeMainSubscription();
-    
-    if (!this.socket$ || this.socket$.closed) {
-      this.logger.info('WebSocketService', `Attempting WebSocket connection (Attempt: ${this.reconnectionAttempt + 1})`);
-      this.connectionState.next('connecting');
-      this.updateStats({ attempting: this.reconnectionAttempt + 1 }); // Update attempting count
+    this.connectionState.next('connecting');
+    this.updateStats({ attempting: 1 });
+    this.logger.info('WebSocketService', 'Attempting WebSocket connection', { url: this.wsUrl });
 
-      const config: WebSocketSubjectConfig<any> = {
-        url: environment.wsUrl,
+    try {
+      this.socket$ = webSocket({
+        url: this.wsUrl,
         openObserver: {
           next: () => {
-            this.logger.info('WebSocketService', 'WebSocket connection established successfully');
-            this.connectionStatus.next(true);
             this.connectionState.next('connected');
+            this.connectionStatus.next(true);
             this.reconnectionAttempt = 0;
-            this.openedCount++; // Increment open count
-            this.updateStats({ open: this.openedCount, attempting: 0 }); // Update stats
+            this.updateStats({ open: 1, attempting: -1 });
+            this.logger.info('WebSocketService', 'WebSocket connection established');
+            
+            // Switch from mock to real mode if necessary
+            if (this.mockModeSubject.getValue()) {
+              this.logger.info('WebSocketService', 'Switching from mock to real data');
+              this.mockModeSubject.next(false);
+            }
           }
         },
         closeObserver: {
           next: (event) => {
-            this.logger.warning('WebSocketService', 'WebSocket connection closed', { code: event.code, reason: event.reason });
-            this.connectionStatus.next(false);
             this.connectionState.next('disconnected');
-            this.closedCount++; // Increment closed count
-            this.updateStats({ closed: this.closedCount }); // Update stats
+            this.connectionStatus.next(false);
+            this.updateStats({ closed: 1, open: -1 });
+            this.socket$ = null;
             
-            if (this.reconnectEnabled) {
-              this.handleReconnectionAttempt();
+            if (!this.forceDisconnected) {
+              this.handleReconnect();
+            }
+            
+            this.logger.info('WebSocketService', 'WebSocket connection closed', {
+              code: event.code,
+              reason: event.reason || 'No reason provided'
+            });
+            
+            // Switch to mock mode if real connection is lost
+            if (!this.mockModeSubject.getValue()) {
+              this.logger.info('WebSocketService', 'Connection lost, switching to mock mode');
+              this.initializeMockMode();
             }
           }
         }
-      };
+      });
 
-      try {
-        this.socket$ = webSocket(config);
-
-        this.mainSubscription = this.socket$.pipe(
-          catchError(error => {
-            this.logger.error('WebSocketService', 'WebSocket error caught in stream', { error });
-            this.errorCount++; // Increment error count
-            this.updateStats({ errors: this.errorCount }); // Update stats
-            this.connectionState.next('error');
-            
-            if (this.reconnectEnabled) {
-              this.handleReconnectionAttempt();
-            }
-            return of([]); // Use 'of' from rxjs
-          }),
-          tap({
-            complete: () => this.logger.info('WebSocketService', 'WebSocket stream completed normally (tap)')
-          })
-        ).subscribe({
-          next: (message: any) => {
-            if (message.requestId && this.sentMessages[message.requestId]) {
-              const sentTime = this.sentMessages[message.requestId];
-              const responseTime = new Date().getTime() - sentTime.getTime();
-              this.logger.info('WebSocketService', `Message response received in ${responseTime}ms`,
-                              { requestId: message.requestId });
-              delete this.sentMessages[message.requestId];
-            }
-            this.messagesSubject.next(message);
-          },
-          error: (error: any) => {
-            this.logger.error('WebSocketService', 'WebSocket subscription error (post-connection?)', { error });
-            this.errorCount++; // Increment error count here too just in case
-            this.updateStats({ errors: this.errorCount }); // Update stats
-            this.connectionState.next('error');
-          },
-          complete: () => {
-            this.logger.info('WebSocketService', 'WebSocket main subscription completed.');
-            if (this.reconnectEnabled) {
-              this.handleReconnectionAttempt();
-            }
-          }
-        });
-      } catch (err) {
-        this.logger.error('WebSocketService', 'Error creating WebSocket connection', { error: err });
-        this.errorCount++;
-        this.updateStats({ errors: this.errorCount });
-        this.connectionState.next('error');
-        
-        if (this.reconnectEnabled) {
-          this.handleReconnectionAttempt();
-        }
+      // Subscribe to incoming messages
+      this.mainSubscription = this.socket$.pipe(
+        catchError(error => {
+          this.updateStats({ errors: 1 });
+          this.logger.error('WebSocketService', 'WebSocket error', { error });
+          
+          // Trigger reconnect
+          this.connectionState.next('disconnected');
+          this.connectionStatus.next(false);
+          this.socket$ = null;
+          this.handleReconnect();
+          
+          // Return empty observable to prevent error propagation
+          return of();
+        })
+      ).subscribe(
+        message => this.handleIncomingMessage(message),
+        error => this.logger.error('WebSocketService', 'WebSocket subscription error', { error })
+      );
+    } catch (error) {
+      this.updateStats({ errors: 1, attempting: -1 });
+      this.logger.error('WebSocketService', 'WebSocket connection attempt failed', { error });
+      
+      // Ensure we're in mock mode if connection fails
+      if (!this.mockModeSubject.getValue()) {
+        this.initializeMockMode();
       }
+      
+      // Still try to reconnect
+      this.handleReconnect();
     }
   }
 
-  private handleReconnectionAttempt(): void {
-    this.connectionStatus.next(false);
-    this.unsubscribeMainSubscription();
-    this.socket$?.complete();
-    this.socket$ = null;
-
-    if (this.useMockMode) {
-      this.logger.info('WebSocketService', 'Reconnection skipped - running in MOCK mode');
+  private handleReconnect(): void {
+    if (this.forceDisconnected || this.mockModeSubject.getValue()) {
       return;
     }
-
-    // Check if we've reached the maximum number of reconnection attempts
-    if (this.reconnectionAttempt >= this.maxReconnectionAttempts) {
-      this.logger.warning('WebSocketService', `Reached maximum reconnection attempts (${this.maxReconnectionAttempts})`);
-      
-      // After max attempts, try one more time after a longer delay
-      this.reconnectionAttempt = 0;
-      setTimeout(() => this.connect(), this.maxReconnectionDelay);
-      return;
-    }
-
+    
     this.reconnectionAttempt++;
-    const delay = Math.min(this.maxReconnectionDelay, this.initialReconnectionDelay * Math.pow(2, this.reconnectionAttempt - 1));
-    this.logger.info('WebSocketService', `Scheduling reconnection attempt ${this.reconnectionAttempt} in ${delay / 1000} seconds.`);
-    setTimeout(() => this.connect(), delay);
-  }
-
-  private unsubscribeMainSubscription(): void {
-    if (this.mainSubscription && !this.mainSubscription.closed) {
-      this.logger.debug('WebSocketService', 'Unsubscribing from main WebSocket subscription.');
-      this.mainSubscription.unsubscribe();
-    }
-    this.mainSubscription = null;
-  }
-
-  // Helper to update stats
-  private updateStats(changes: Partial<WebSocketStats>): void {
-    const currentStats = this.webSocketStatsSubject.getValue();
-    this.webSocketStatsSubject.next({ ...currentStats, ...changes });
-  }
-
-  public sendMessage(message: any): void {
-    if (message.options && message.options.requestId) {
-      this.sentMessages[message.options.requestId] = new Date();
-    }
-
-    if (this.useMockMode) {
-      this.handleMockMessage(message);
-      return;
-    }
-
-    if (this.socket$ && !this.socket$.closed) {
-      this.logger.debug('WebSocketService', 'Sending WebSocket message', { message });
-      this.socket$.next(message);
-    } else {
-      this.logger.warning('WebSocketService', 'WebSocket not connected. Message dropped. Reconnection attempt should be in progress.');
-      
-      // Try to reconnect if not already attempting
-      if (this.reconnectEnabled && this.connectionState.getValue() !== 'connecting') {
-        this.connect();
-      }
-    }
-  }
-
-  public subscribe<T>(channel: string): Observable<T> {
-    // Register this channel for mock mode
-    this.registeredChannels.add(channel);
     
-    if (this.useMockMode) {
-      return this.createMockObservable<T>(channel);
-    }
-
-    this.sendMessage({ action: 'subscribe', channel });
-
-    return this.messages$.pipe(
-      filter((message: any) => {
-        // Handle different message formats
-        if (message && message.channel === channel) {
-          return true;
-        }
-        
-        // Some backends emit on the channel name directly
-        if (channel in message) {
-          return true;
-        }
-        
-        // Special case for performance metrics
-        if (channel === 'performance-metrics' && Array.isArray(message)) {
-          return true;
-        }
-        
-        return false;
-      }),
-      map((message: any) => {
-        // Handle different response formats
-        if (message && message.channel === channel && message.data) {
-          return message.data as T;
-        }
-        
-        // Handle direct channel data
-        if (channel in message) {
-          return message[channel] as T;
-        }
-        
-        // Special case for arrays (performance metrics)
-        if (Array.isArray(message) && channel === 'performance-metrics') {
-          return message as unknown as T;
-        }
-        
-        return message as T;
-      })
-    );
-  }
-
-  public disconnect(): void {
-    this.logger.info('WebSocketService', 'Manual disconnect called.');
-    this.reconnectionAttempt = -1; // Prevent automatic reconnection
-    this.unsubscribeMainSubscription();
-    if (this.socket$) {
-      this.socket$.complete();
-      this.socket$ = null;
-    }
-    this.connectionStatus.next(false);
-    this.connectionState.next('disconnected');
-    this.updateStats({ attempting: 0 }); // Reset attempting count on manual disconnect
-  }
-
-  ensureConnection(): boolean {
-    if (this.useMockMode) {
-      return true; // In mock mode, connection is always "ensured"
-    }
+    // No max reconnection attempts - keep trying indefinitely
+    // We'll use an increasing delay between attempts to avoid hammering the server
+    const delay = Math.min(1000 * Math.pow(1.5, Math.min(this.reconnectionAttempt - 1, 10)), 30000);
     
-    if (!this.socket$ || this.socket$.closed) {
-      return false;
-    }
-    return this.connectionStatus.getValue();
-  }
-
-  onReconnected(callback: () => void): void {
-    this.connectionStatus$.pipe(
-      filter(connected => connected),
-      tap(() => callback())
-    ).subscribe();
-  }
-
-  // Force a reconnection attempt - useful for testing or manual recovery
-  forceReconnect(): void {
-    this.logger.info('WebSocketService', 'Manual reconnection attempt triggered');
-    if (this.useMockMode) {
-      this.logger.info('WebSocketService', 'In mock mode - no reconnection needed');
-      return;
-    }
+    this.logger.info('WebSocketService', `Reconnecting in ${delay}ms (attempt ${this.reconnectionAttempt})`, {
+      wsUrl: this.wsUrl
+    });
     
-    // Reset reconnection count to start fresh
-    this.reconnectionAttempt = 0;
-    this.disconnect();
-    this.connect();
-  }
-
-  // Set mock mode at runtime
-  setMockMode(useMock: boolean): void {
-    if (this.useMockMode === useMock) return;
-    
-    this.useMockMode = useMock;
-    this.logger.info('WebSocketService', `Mock mode ${useMock ? 'enabled' : 'disabled'}`);
-    
-    if (useMock) {
-      // Switch to mock mode
-      this.disconnect();
-      this.initMockMode();
-    } else {
-      // Switch to real connection mode
-      if (this.mockDataSubscription) {
-        this.mockDataSubscription.unsubscribe();
-        this.mockDataSubscription = null;
-      }
+    setTimeout(() => {
       this.connect();
-    }
+    }, delay);
   }
-
-  // --- Mock Mode Implementation ---
-
-  private initMockMode(): void {
-    // Set mock connection status to true
+  
+  private initializeMockMode(): void {
+    // Clean up any existing connection
+    this.disconnect();
+    
+    // Set mock mode flag
+    this.mockModeSubject.next(true);
+    this.logger.info('WebSocketService', 'Starting in MOCK mode - no actual WebSocket connection will be attempted');
+    
+    // Initialize mock data generation
     this.connectionStatus.next(true);
     this.connectionState.next('connected');
-    this.openedCount = 1;
-    this.updateStats({ open: 1, attempting: 0 });
-    
-    // Set up interval for mock data generation
-    this.mockDataSubscription = interval(5000).subscribe(() => {
-      this.generateMockDataForRegisteredChannels();
-    });
     
     this.logger.info('WebSocketService', 'Mock mode initialized - mock data generation started');
   }
 
-  private generateMockDataForRegisteredChannels(): void {
-    this.registeredChannels.forEach(channel => {
-      const mockData = this.generateMockDataForChannel(channel);
-      if (mockData) {
-        this.messagesSubject.next(mockData);
+  // Helper to update stats
+  private updateStats(changes: Partial<WebSocketStats>): void {
+    const current = this.webSocketStatsSubject.getValue();
+    const updated = { ...current };
+    
+    Object.entries(changes).forEach(([key, value]) => {
+      if (typeof value === 'number') {
+        const currentValue = updated[key as keyof WebSocketStats] as number;
+        updated[key as keyof WebSocketStats] = Math.max(0, currentValue + value) as never;
       }
     });
+    
+    this.webSocketStatsSubject.next(updated);
+  }
+  
+  private handleIncomingMessage(message: any): void {
+    // Log all incoming messages for debugging
+    this.logger.debug('WebSocketService', 'Received message', { 
+      type: message.type || message.action, 
+      stream: message.stream,
+      isMock: message.isMock
+    });
+    
+    // Process registration acknowledgments - check for both formats
+    if (message.type === 'registration-ack' || message.action === 'registration-ack') {
+      this.logger.info('WebSocketService', `Received registration acknowledgement for ${message.stream}`, {
+        success: message.success,
+        stream: message.stream,
+        requestId: message.requestId
+      });
+      
+      this.handleRegistrationAck(message);
+    }
+    
+    // Forward all messages to subscribers
+    this.messagesSubject.next(message);
+  }
+  
+  private handleMockMessage(message: any): void {
+    this.logger.info('WebSocketService', `Mock mode: Processing message ${JSON.stringify(message)}`);
+    
+    // Handle subscription requests and registrations
+    if (message.action === 'subscribe') {
+      // Immediate response for subscriptions...
+    }
+    
+    // Handle registration requests
+    if (message.action === 'register') {
+      const stream = message.stream;
+      this.registeredChannels.add(stream);
+      
+      // Send registration acknowledgment
+      const ackResponse = {
+        action: 'registration-ack',
+        success: true,
+        stream: stream,
+        requestId: message.options?.requestId || `auto-${Date.now()}`,
+        message: `Successfully registered for ${stream} stream`,
+        timestamp: new Date().toISOString()
+      };
+      
+      // Important: emit the acknowledgment to registrationAcks subject
+      const currentAcks = this.registrationAcks.getValue();
+      currentAcks.set(stream, true);
+      this.registrationAcks.next(new Map(currentAcks));
+      
+      // Emit the acknowledgment through messages subject
+      this.messagesSubject.next({
+        type: 'registration-ack',
+        ...ackResponse
+      });
+      
+      // Generate initial mock data for this stream
+      setTimeout(() => this.generateMockDataForChannel(stream), 100);
+      
+      // Schedule periodic updates for this stream
+      this.setupStreamInterval(stream);
+      
+      this.logger.info('WebSocketService', `Mock mode: Registration acknowledged for ${stream}`);
+    }
+  }
+  
+  // Add method to setup periodic updates for registered streams
+  private setupStreamInterval(stream: string): void {
+    // Setup different intervals based on stream type
+    const intervals: { [key: string]: number } = {
+      'health-metrics': 10000,
+      'performance-metrics': 5000,
+      'section-colors': 30000,
+      'metric-legend': 30000,
+      'metrics': 3000,
+      'database': 7000,
+      'graphql': 8000
+    };
+    
+    const interval = intervals[stream] || 5000;
+    
+    // Setup periodic updates
+    setInterval(() => {
+      this.generateMockDataForChannel(stream);
+    }, interval);
   }
 
   private generateMockDataForChannel(channel: string): any {
@@ -379,331 +332,473 @@ export class WebSocketService implements OnDestroy {
     const mockFlag = { isMock: true };
     
     switch(channel) {
-      case 'performance-metrics':
-        return [
-          {
-            id: `cpu-${Date.now()}`,
-            name: 'CPU Usage',
-            value: Math.floor(Math.random() * 100),
-            unit: '%',
-            timestamp: new Date(),
-            source: 'Mock Server',
-            type: 'cpu',
-            color: '#FF5722',
-            ...mockFlag
-          },
-          {
-            id: `memory-${Date.now()}`,
-            name: 'Memory Usage',
-            value: Math.floor(Math.random() * 16000),
-            unit: 'MB',
-            timestamp: new Date(),
-            source: 'Mock Server',
-            type: 'memory',
-            color: '#2196F3',
-            ...mockFlag
-          },
-          {
-            id: `latency-${Date.now()}`,
-            name: 'Response Time',
-            value: Math.floor(Math.random() * 200),
-            unit: 'ms',
-            timestamp: new Date(),
-            source: 'Mock Server',
-            type: 'latency',
-            color: '#795548',
-            ...mockFlag
-          },
-          {
-            id: `throughput-${Date.now()}`,
-            name: 'Request Throughput',
-            value: Math.floor(Math.random() * 150),
-            unit: 'rps',
-            timestamp: new Date(),
-            source: 'Mock Server',
-            type: 'throughput',
-            color: '#009688',
-            ...mockFlag
-          }
+      case 'section-colors':
+        const sectionColors = {
+          dashboard: '#3F51B5', // Indigo
+          health: '#00BCD4',    // Cyan
+          metrics: '#4CAF50',   // Green
+          performance: '#FF5722', // Deep Orange
+          database: '#9C27B0',  // Purple
+          graphql: '#FF9800'    // Orange
+        };
+        this.messagesSubject.next({...sectionColors, ...mockFlag});
+        return sectionColors;
+        
+      case 'metric-legend':
+        const legendItems = [
+          { name: 'CPU Usage', color: '#FF5722', description: 'Processor utilization' },
+          { name: 'Memory', color: '#2196F3', description: 'RAM usage' },
+          { name: 'Disk IO', color: '#4CAF50', description: 'Disk read/write operations' },
+          { name: 'Network', color: '#9C27B0', description: 'Network traffic' },
+          { name: 'Requests', color: '#FFC107', description: 'HTTP/API requests' },
+          { name: 'Latency', color: '#795548', description: 'Response time' }
         ];
+        this.messagesSubject.next({...mockFlag, data: legendItems});
+        return legendItems;
         
       case 'health-metrics':
-        return {
-          ...mockFlag,
+        const healthMetrics = {
+          sectionColor: '#00BCD4',
           servers: [
-            { name: 'API Server', status: 'healthy', uptime: '14d 7h', load: Math.floor(Math.random() * 100) },
-            { name: 'Worker Node 1', status: 'healthy', uptime: '7d 12h', load: Math.floor(Math.random() * 100) },
-            { name: 'Worker Node 2', status: Math.random() > 0.7 ? 'warning' : 'healthy', uptime: '3d 9h', load: Math.floor(Math.random() * 100) }
+            { name: 'API Server', status: 'healthy', uptime: '14d 7h', load: 42, color: '#00BCD4' },
+            { name: 'Worker Node 1', status: 'healthy', uptime: '7d 12h', load: 38, color: '#00BCD4' },
+            { name: 'Worker Node 2', status: 'warning', uptime: '3d 9h', load: 78, color: '#00BCD4' }
           ],
           databases: [
-            { name: 'Primary DB', status: 'healthy', connections: Math.floor(Math.random() * 50), latency: `${Math.floor(Math.random() * 20)}ms` },
-            { name: 'Analytics DB', status: 'healthy', connections: Math.floor(Math.random() * 20), latency: `${Math.floor(Math.random() * 30)}ms` }
+            { name: 'Primary DB', status: 'healthy', connections: 24, latency: '5ms', color: '#00BCD4' },
+            { name: 'Analytics DB', status: 'healthy', connections: 7, latency: '12ms', color: '#00BCD4' }
           ],
           services: [
-            { name: 'Authentication', status: 'healthy', requests: Math.floor(Math.random() * 2000), errorRate: Math.random() * 0.1 },
-            { name: 'Storage', status: 'healthy', requests: Math.floor(Math.random() * 10000), errorRate: 0 },
-            { name: 'Messaging', status: Math.random() > 0.8 ? 'error' : 'healthy', requests: Math.floor(Math.random() * 1000), errorRate: Math.random() * 5 }
-          ]
+            { name: 'Authentication', status: 'healthy', requests: 1452, errorRate: 0.01, color: '#00BCD4' },
+            { name: 'Storage', status: 'healthy', requests: 8723, errorRate: 0, color: '#00BCD4' },
+            { name: 'Messaging', status: 'error', requests: 752, errorRate: 4.2, color: '#00BCD4' }
+          ],
+          isMock: true
         };
+        this.messagesSubject.next(healthMetrics);
+        return healthMetrics;
         
-      case 'system-metrics':
-        return {
-          ...mockFlag,
-          data: [
-            {
-              name: 'CPU',
-              value: Math.floor(Math.random() * 100),
-              timestamp: new Date(),
-              unit: '%',
-              source: 'Mock System',
-              type: 'resource',
-              color: '#FF5722' 
-            },
-            {
-              name: 'Memory',
-              value: Math.floor(Math.random() * 32000),
-              timestamp: new Date(),
-              unit: 'MB',
-              source: 'Mock System',
-              type: 'resource',
-              color: '#2196F3'
-            }
-          ]
-        };
-        
-      case 'system-status':
-        return {
-          ...mockFlag, // Ensure mock flag is included
-          cpu: Math.floor(Math.random() * 100),
-          memory: Math.floor(Math.random() * 100),
-          disk: Math.floor(Math.random() * 100),
-          network: Math.floor(Math.random() * 100),
-          uptime: `${Math.floor(Math.random() * 30)}d ${Math.floor(Math.random() * 24)}h`,
-          activeConnections: Math.floor(Math.random() * 500)
-        };
-        
-      case 'frontend-metrics':
-        return {
-          ...mockFlag,
-          loadTime: `${(Math.random() * 2).toFixed(1)}s`,
-          renderTime: `${(Math.random() * 1).toFixed(1)}s`,
-          interactions: Math.floor(Math.random() * 10000),
-          errors: Math.floor(Math.random() * 50),
-          activeUsers: Math.floor(Math.random() * 500),
-          browserShare: {
-            chrome: Math.floor(Math.random() * 70) + 30,
-            firefox: Math.floor(Math.random() * 20),
-            safari: Math.floor(Math.random() * 15),
-            edge: Math.floor(Math.random() * 10)
-          }
-        };
-        
-      case 'metrics':
-        return [
-          {
-            id: `api-${Date.now()}`,
-            name: 'API Calls',
-            value: Math.floor(Math.random() * 1000),
-            unit: 'calls/min',
-            timestamp: new Date(),
-            source: 'Mock API',
-            type: 'api',
-            ...mockFlag
-          },
-          {
-            id: `err-${Date.now()}`,
-            name: 'Error Rate',
-            value: Math.random() * 5,
-            unit: '%',
-            timestamp: new Date(),
-            source: 'Mock Error Tracking',
-            type: 'errors',
-            ...mockFlag
-          }
+      case 'performance-metrics':
+        const perfMetrics = [
+          { name: 'CPU Usage', value: Math.floor(Math.random() * 90) + 10, timestamp: new Date(), unit: '%', isMock: true },
+          { name: 'Memory', value: (Math.random() * 4 + 1).toFixed(1), timestamp: new Date(), unit: 'GB', isMock: true },
+          { name: 'API Calls', value: Math.floor(Math.random() * 200) + 50, timestamp: new Date(), unit: 'req/min', isMock: true },
+          { name: 'Network', value: (Math.random() * 10).toFixed(1), timestamp: new Date(), unit: 'MB/s', isMock: true }
         ];
-        
+        this.messagesSubject.next({metrics: perfMetrics, isMock: true});
+        return perfMetrics;
+      
       case 'database':
-        return {
-          ...mockFlag,
-          connections: Math.floor(Math.random() * 100),
-          activeQueries: Math.floor(Math.random() * 50),
-          queryHistory: [
+        const dbMetrics = {
+          metrics: [
+            { name: 'Query Throughput', value: 142 + Math.floor(Math.random() * 30), unit: 'queries/sec', type: 'throughput', isMock: true },
+            { name: 'Read Latency', value: 5.2 + Math.random() * 2, unit: 'ms', type: 'latency', isMock: true },
+            { name: 'Write Latency', value: 8.7 + Math.random() * 3, unit: 'ms', type: 'latency', isMock: true },
+            { name: 'Connections', value: 24 + Math.floor(Math.random() * 10), unit: 'conns', type: 'connections', isMock: true }
+          ],
+          queries: [
             {
-              type: 'query',
-              message: `SELECT * FROM users LIMIT ${Math.floor(Math.random() * 20)}`,
+              id: Date.now().toString(),
+              statement: 'SELECT * FROM users WHERE active = true LIMIT 10',
+              type: 'SELECT',
+              collection: 'users',
+              duration: Math.floor(Math.random() * 100) + 10,
               timestamp: new Date(),
-              operation: 'SELECT',
-              collection: 'users'
-            },
-            {
-              type: Math.random() > 0.8 ? 'error' : 'query',
-              message: Math.random() > 0.8 ? 'Failed to connect to database' : 'INSERT INTO logs',
-              timestamp: new Date(Date.now() - 60000),
-              operation: Math.random() > 0.8 ? 'ERROR' : 'INSERT',
-              collection: Math.random() > 0.8 ? null : 'logs'
+              status: Math.random() > 0.9 ? 'error' : 'completed',
+              affectedRows: Math.floor(Math.random() * 50),
+              isMock: true
             }
-          ]
+          ],
+          stats: {
+            connections: 24 + Math.floor(Math.random() * 10),
+            activeQueries: 5 + Math.floor(Math.random() * 10),
+            avgQueryTime: 45 + Math.floor(Math.random() * 20),
+            size: '2.4GB',
+            collections: 12,
+            uptime: '14d 7h',
+            isMock: true
+          },
+          isMock: true
         };
+        this.messagesSubject.next(dbMetrics);
+        return dbMetrics;
         
       case 'graphql':
-        return {
-          ...mockFlag,
+        const graphqlData = {
           queries: [
             {
               name: 'GetUserProfile',
               status: 'success',
               timestamp: new Date(),
-              duration: Math.floor(Math.random() * 100)
+              duration: Math.floor(Math.random() * 100) + 20,
+              isMock: true
             },
             {
               name: 'UpdateUserPreferences',
               status: Math.random() > 0.8 ? 'error' : 'success',
               timestamp: new Date(Date.now() - 120000),
-              duration: Math.floor(Math.random() * 200) + 100
+              duration: Math.floor(Math.random() * 200) + 100,
+              isMock: true
             }
           ],
-          performance: {
-            averageResponseTime: Math.floor(Math.random() * 100) + 20,
-            maxResponseTime: Math.floor(Math.random() * 500) + 100,
-            requestsPerMinute: Math.floor(Math.random() * 60)
-          }
+          stats: {
+            totalQueries: 1265 + Math.floor(Math.random() * 50),
+            avgResponseTime: 67 + Math.floor(Math.random() * 20),
+            errorRate: 2.3 + (Math.random() * 1),
+            cacheHitRate: 78.5 + (Math.random() * 5),
+            isMock: true
+          },
+          isMock: true
         };
+        this.messagesSubject.next(graphqlData);
+        return graphqlData;
         
-      case 'metric-legend':
-        return [
-          { name: 'CPU Usage', color: '#FF5722', description: 'Processor utilization', ...mockFlag },
-          { name: 'Memory', color: '#2196F3', description: 'RAM usage', ...mockFlag },
-          { name: 'Disk IO', color: '#4CAF50', description: 'Disk read/write operations', ...mockFlag },
-          { name: 'Network', color: '#9C27B0', description: 'Network traffic', ...mockFlag },
-          { name: 'Requests', color: '#FFC107', description: 'HTTP/API requests', ...mockFlag },
-          { name: 'Latency', color: '#795548', description: 'Response time', ...mockFlag },
-          { name: 'Errors', color: '#F44336', description: 'Error count', ...mockFlag },
-          { name: 'Throughput', color: '#009688', description: 'Requests per second', ...mockFlag },
-          { name: 'Connections', color: '#3F51B5', description: 'Active connections', ...mockFlag }
+      case 'metrics':
+        // Add missing mock data generator for the metrics channel
+        const metricsData = [
+          this.generateMetric('cpu', 'CPU Usage', '%', 35, 100),
+          this.generateMetric('memory', 'Memory Usage', 'MB', 4200, 16384),
+          this.generateMetric('disk', 'Disk IO', 'IOPS', 120, 500),
+          this.generateMetric('network', 'Network Traffic', 'Mbps', 75, 1000),
+          this.generateMetric('requests', 'Request Count', 'req/s', 250, 1000),
+          this.generateMetric('latency', 'API Latency', 'ms', 12, 500)
         ];
-        
-      case 'logs':
-        // Generate a random log entry
-        const logTypes = ['info', 'warning', 'error', 'debug'];
-        const logType = logTypes[Math.floor(Math.random() * logTypes.length)];
-        const sources = ['API:SystemMonitor', 'API:Database', 'API:Authentication', 'API:WebServer'];
-        const source = sources[Math.floor(Math.random() * sources.length)];
-        const messages = [
-          'Request processed successfully',
-          'Database query completed',
-          'Authentication attempt',
-          'File not found',
-          'Permission denied',
-          'User session expired',
-          'Configuration loaded'
-        ];
-        const message = messages[Math.floor(Math.random() * messages.length)];
-        
-        return {
-          timestamp: new Date(),
-          level: logType,
-          source,
-          message,
-          data: { mockData: true },
-          ...mockFlag
-        };
+        this.messagesSubject.next({ type: 'metrics', data: metricsData, ...mockFlag });
+        this.logger.info('WebSocketService', 'Generated mock metrics data', { count: metricsData.length });
+        return metricsData;
         
       default:
-        this.logger.debug('WebSocketService', `No mock data generator for channel: ${channel}`);
+        this.logger.warning('WebSocketService', `No mock data generator for channel: ${channel}`);
         return null;
     }
   }
 
-  private handleMockMessage(message: any): void {
-    this.logger.info('WebSocketService', `Mock mode: Processing message ${JSON.stringify(message)}`);
+  // Helper method to generate metric objects with random values
+  private generateMetric(
+    type: string,
+    name: string,
+    unit: string, 
+    baseValue: number = 50,
+    maxValue: number = 100
+  ): any {
+    const randomFactor = 0.2; // 20% random variation
+    const randomValue = baseValue + (Math.random() * randomFactor * 2 - randomFactor) * baseValue;
+    const value = Math.min(Math.max(Math.round(randomValue * 10) / 10, 0), maxValue);
     
-    // Handle subscription requests and registrations
-    if (message.action === 'subscribe') {
-      this.registeredChannels.add(message.channel);
-      // Generate initial mock data for this channel with delay
-      setTimeout(() => {
-        const mockData = this.generateMockDataForChannel(message.channel);
-        if (mockData) {
-          this.messagesSubject.next(mockData);
-        }
-      }, 500);
-    }
+    return {
+      id: `${type}-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      name,
+      value,
+      unit,
+      timestamp: new Date(),
+      source: 'Mock Data Service',
+      type,
+      color: this.getMetricColor(type),
+      isMock: true
+    };
+  }
+
+  // Helper to get color for different metric types
+  private getMetricColor(type: string): string {
+    const colorMap: Record<string, string> = {
+      cpu: '#FF5722',
+      memory: '#2196F3',
+      disk: '#4CAF50',
+      network: '#9C27B0',
+      requests: '#FFC107',
+      latency: '#795548',
+      errors: '#F44336',
+      throughput: '#009688',
+      connections: '#3F51B5'
+    };
     
-    // Handle registration requests
-    if (message.action === 'register') {
-      this.registeredChannels.add(message.stream);
-      // Generate immediate acknowledgment
-      if (message.options && message.options.requestId) {
-        setTimeout(() => {
-          this.messagesSubject.next({
-            success: true,
-            stream: message.stream,
-            requestId: message.options.requestId,
-            message: `Successfully registered for ${message.stream} stream (MOCK MODE)`
-          });
-        }, 100);
-        
-        // Generate initial mock data for this stream
-        setTimeout(() => {
-          const mockData = this.generateMockDataForChannel(message.stream);
-          if (mockData) {
-            this.messagesSubject.next(mockData);
-          }
-        }, 500);
-      }
-    }
-    
-    // Handle ping action for WebSocket test
-    if (message.action === 'ping') {
-      setTimeout(() => {
-        this.messagesSubject.next({
-          action: 'pong',
-          timestamp: new Date().toISOString(),
-          requestId: message.options?.requestId,
-          message: 'WebSocket connection is working (MOCK MODE)'
-        });
-      }, 100);
-    }
-    
-    // Handle slow response simulation
-    if (message.action === 'simulate-slow-response') {
-      const delayMs = message.options?.delayMs || 3000;
+    return colorMap[type] || '#757575';
+  }
+
+  // Method to handle registration acknowledgements
+  private handleRegistrationAck(message: any): void {
+    if (message.stream) {
+      const stream = message.stream;
+      const success = message.success === true;
       
-      setTimeout(() => {
-        this.messagesSubject.next({
-          action: 'slow-response-result',
-          requestId: message.options?.requestId,
-          message: `Slow response completed after ${delayMs}ms (MOCK MODE)`,
-          timestamp: new Date().toISOString()
-        });
-      }, delayMs);
+      // Update the registration status
+      const currentAcks = this.registrationAcks.getValue();
+      currentAcks.set(stream, success);
+      this.registrationAcks.next(new Map(currentAcks));
+      
+      // Log the registration status
+      this.logger.info('WebSocketService', `Registration status updated for ${stream}`, { 
+        success,
+        registered: Array.from(currentAcks.entries())
+          .filter(([_, isRegistered]) => isRegistered)
+          .map(([streamName]) => streamName)
+      });
     }
   }
 
-  private createMockObservable<T>(channel: string): Observable<T> {
+  public sendMessage(message: any): void {
+    if (this.mockModeSubject.getValue()) {
+      this.processMockMessage(message);
+      return;
+    }
+    
+    if (!this.socket$ || this.socket$.closed) {
+      this.logger.warning('WebSocketService', 'Cannot send message, socket is not open', { message });
+      return;
+    } else {
+      this.socket$?.next(JSON.stringify(message));
+    }
+
+    try {
+      // Don't modify the original message - send it as-is
+      this.socket$.next(JSON.stringify(message));
+      this.logger.debug('WebSocketService', 'Message sent', { 
+        type: message.type || message.action,
+        stream: message.stream
+      });
+    } catch (error) {
+      this.logger.error('WebSocketService', 'Error sending message', { error, message });
+    }
+  }
+
+  public subscribe<T>(channel: string): Observable<T> {
+    if (!channel) {
+      this.logger.error('WebSocketService', 'Attempted to subscribe to empty channel');
+      return of() as Observable<T>;
+    }
+    
     return this.messages$.pipe(
-      filter((message: any) => {
-        return message.channel === channel || 
-               (message.stream === channel) ||
-               (message.data && Array.isArray(message.data));
+      map((message: any) => {
+        // For direct messages with type field or messages with just data
+        if (message.type === channel || message.action === channel) {
+          delete message.type;
+          delete message.action;
+          return message;
+        }
+        
+        // For messages with a specific channel field
+        if (message.channel === channel) {
+          return message.data;
+        }
+        
+        // If the message is the channel data itself (e.g., health-metrics object)
+        if (channel === 'health-metrics' && message.servers) {
+          return message;
+        }
+        
+        // If the message is for a specific stream
+        if (message.stream === channel) {
+          return message.data || message;
+        }
+        
+        // For section colors which are direct key-values
+        if (channel === 'section-colors' && 
+            (message.dashboard || message.health || message.metrics)) {
+          return message;
+        }
+        
+        // Special case for metric-legend
+        if (channel === 'metric-legend' && 
+            ((Array.isArray(message.data) && message.data[0]?.name && message.data[0]?.color) ||
+             message === 'metric-legend')) {
+          return message;
+        }
+        
+        return null;
       }),
-      map(message => {
-        // If the message has channel and data structure, return just the data with mock flag
-        if (message.channel === channel && message.data) {
-          // Add mock flag to data if it's an object or array
-          if (Array.isArray(message.data)) {
-            return message.data.map((item: any) => ({ ...item, isMock: true })) as unknown as T;
-          } else if (typeof message.data === 'object' && message.data !== null) {
-            return { ...message.data, isMock: true } as unknown as T;
-          }
-          return message.data as T;
+      // Only emit when we have data for this channel
+      filter((data: any) => data !== null)
+    ) as Observable<T>;
+  }
+
+  public disconnect(): void {
+    this.forceDisconnected = true;
+    
+    if (this.mainSubscription) {
+      this.mainSubscription.unsubscribe();
+      this.mainSubscription = null;
+    }
+    
+    if (this.socket$) {
+      this.socket$.complete();
+      this.socket$ = null;
+    }
+    
+    this.connectionState.next('disconnected');
+    this.connectionStatus.next(false);
+    
+    this.logger.info('WebSocketService', 'WebSocket disconnected by client request');
+  }
+
+  ensureConnection(): boolean {
+    if (this.mockModeSubject.getValue()) {
+      // In mock mode, we're always "connected"
+      return true;
+    }
+    
+    if (!this.socket$ && !this.forceDisconnected) {
+      this.connect();
+    }
+    
+    return this.connectionStatus.getValue();
+  }
+
+  onReconnected(callback: () => void): void {
+    this.reconnectionCallbacks.push(callback);
+    
+    // If already connected, execute immediately
+    if (this.connectionStatus.getValue()) {
+      callback();
+    }
+  }
+
+  // Force a reconnection attempt - useful for testing or manual recovery
+  forceReconnect(): void {
+    this.logger.info('WebSocketService', 'Manual reconnection requested');
+    
+    // Reset the force disconnect flag
+    this.forceDisconnected = false;
+    
+    if (this.mockModeSubject.getValue()) {
+      this.logger.warning('WebSocketService', 'Cannot force reconnect in mock mode');
+      return;
+    }
+    
+    if (this.socket$) {
+      this.socket$.complete();
+      this.socket$ = null;
+    }
+    
+    // Reset connection stats and attempt to reconnect
+    this.reconnectionAttempt = 0;
+    this.connect();
+  }
+
+  // Check if currently in mock mode
+  isMockMode(): boolean {
+    return this.mockModeSubject.getValue();
+  }
+  
+  // Get observable for mock mode changes
+  getMockModeChanges(): Observable<boolean> {
+    return this.mockMode$;
+  }
+  
+  // Set mock mode at runtime
+  setMockMode(useMock: boolean): void {
+    const currentMode = this.mockModeSubject.getValue();
+    
+    if (currentMode === useMock) {
+      return;
+    }
+    
+    this.logger.info('WebSocketService', `Switching to ${useMock ? 'mock' : 'live'} data mode`);
+    
+    if (useMock) {
+      // Switching to mock mode
+      this.disconnect();
+      this.initializeMockMode();
+    } else {
+      // Switching to live mode
+      this.mockModeSubject.next(false);
+      this.forceDisconnected = false;
+      this.reconnectionAttempt = 0;
+      
+      // Clear mock registrations
+      this.registeredChannels.clear();
+      this.registrationAcks.next(new Map());
+      
+      // Connect to real server
+      this.connect();
+    }
+    
+    // Store the preference
+    localStorage.setItem('useMockWebSocket', String(useMock));
+  }
+
+  // Method to register for a specific stream
+  public registerForStream(stream: string, options: any = {}): string {
+    const requestId = options.requestId || `${stream}-reg-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    
+    // Format message appropriately for both modes
+    if (this.mockModeSubject.getValue()) {
+      this.sendMessage({
+        action: 'register',
+        stream: stream,
+        options: {
+          ...options,
+          requestId: requestId
         }
-        // Otherwise return the whole message with mock flag
-        if (typeof message === 'object' && message !== null) {
-          return { ...message, isMock: true } as unknown as T;
+      });
+    } else {
+      // Send complete registration message with all fields
+      const registrationMessage = {
+        action: 'register',
+        type: 'register',
+        stream: stream,
+        options: {
+          ...options,
+          requestId: requestId
         }
-        return message as T;
+      };
+      
+      this.sendMessage(registrationMessage);
+      this.logger.debug('WebSocketService', 'Registration request sent for ' + stream, { requestId });
+    }
+    
+    return requestId;
+  }
+
+  // Method to check if a stream is successfully registered
+  public isStreamRegistered(stream: string): Observable<boolean> {
+    return this.registrationAcks$.pipe(
+      map((acks: Map<string, boolean>) => acks.get(stream) === true)
+    );
+  }
+  
+  // Helper method to get all registered streams
+  public getRegisteredStreams(): Observable<string[]> {
+    return this.registrationAcks$.pipe(
+      map((acks: Map<string, boolean>) => {
+        const streams = Array.from(acks.entries())
+          .filter(([_, registered]) => registered)
+          .map(([stream]) => stream);
+        
+        this.logger.debug('WebSocketService', 'Currently registered streams', { streams });
+        return streams;
       })
     );
+  }
+
+  // Add the missing processMockMessage method
+  private processMockMessage(message: any): void {
+    this.logger.info('WebSocketService', `Mock mode: Processing message ${JSON.stringify(message)}`);
+    
+    // Handle subscription requests and registrations
+    if (message.action === 'register') {
+      const stream = message.stream;
+      this.registeredChannels.add(stream);
+      
+      // Send registration acknowledgment
+      const ackResponse = {
+        action: 'registration-ack',
+        success: true,
+        stream: stream,
+        requestId: message.options?.requestId || `auto-${Date.now()}`,
+        message: `Successfully registered for ${stream} stream`,
+        timestamp: new Date().toISOString()
+      };
+      
+      // Emit the acknowledgment through messages subject
+      this.messagesSubject.next({
+        type: 'registration-ack',
+        ...ackResponse
+      });
+      
+      // Generate mock data for this stream
+      setTimeout(() => this.generateMockDataForChannel(stream), 100);
+      
+      this.logger.info('WebSocketService', `Mock mode: Registration acknowledged for ${stream}`);
+    }
   }
 }

@@ -5,7 +5,10 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatIconModule } from '@angular/material/icon';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatDividerModule } from '@angular/material/divider';
 import { TopNavComponent } from './top-nav.component';
+import { ConnectionIndicatorModule } from '../../components/connection-indicator/connection-indicator.module';
 
 @NgModule({
   declarations: [TopNavComponent],
@@ -15,7 +18,10 @@ import { TopNavComponent } from './top-nav.component';
     MatToolbarModule,
     MatButtonModule,
     MatMenuModule,
-    MatIconModule
+    MatIconModule,
+    MatSlideToggleModule,
+    MatDividerModule,
+    ConnectionIndicatorModule
   ],
   exports: [TopNavComponent]
 })

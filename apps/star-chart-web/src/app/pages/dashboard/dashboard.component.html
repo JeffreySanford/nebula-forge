@@ -2,9 +2,28 @@
   <div class="dashboard-header">
     <h1 class="gradient-text">System Dashboard</h1>
     <p class="dashboard-subtitle">Monitor and manage all aspects of your application</p>
-    <div class="connection-indicator" [ngClass]="{'connected': (wsConnected$ | async)}">
-      <div class="indicator-dot"></div>
-      <span>{{ (wsConnected$ | async) ? 'Live Data Connected' : 'Connecting...' }}</span>
+    
+    <!-- Add Stream Status Indicator Component -->
+    <app-stream-status-indicator></app-stream-status-indicator>
+    
+    <div class="data-status">
+      <!-- Add data mode indicator -->
+      <div class="connection-indicator" [ngClass]="{'connected': (wsConnected$ | async)}">
+        <div class="indicator-dot"></div>
+        <span>
+          {{ (wsConnected$ | async) ? (wsService.isMockMode() ? 'Mock Data Active' : 'Live Data Connected') : 'Connecting...' }}
+          <span *ngIf="allStreamsRegistered" class="registration-complete">✓</span>
+        </span>
+        <button *ngIf="!wsService.isMockMode()" mat-icon-button class="refresh-button" (click)="requestLiveData()" matTooltip="Refresh Data">
+          <mat-icon>refresh</mat-icon>
+        </button>
+      </div>
+    </div>
+    
+    <!-- Add stream registration status indicator -->
+    <div *ngIf="(wsConnected$ | async) && !allStreamsRegistered" class="registration-status">
+      <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+      <span>Registering data streams...</span>
     </div>
   </div>
   
@@ -161,12 +180,19 @@
     </mat-card>
     
     <!-- Health Status Panel -->
-    <mat-card class="dashboard-card health-status" [ngClass]="{'mock-data-border': healthMetricsIsMock, 'mock-data-indicator': healthMetricsIsMock}">
-      <mat-card-header>
+    <mat-card class="dashboard-card health-status" 
+              [ngClass]="{'mock-data-border': healthMetricsIsMock, 'mock-data-indicator': healthMetricsIsMock}"
+              [style.border-top]="'4px solid ' + healthSectionColor">
+      <mat-card-header [style.background-color]="healthSectionColor + '10'">
         <mat-card-title>
           <div class="card-title-with-icon">
-            <mat-icon>favorite</mat-icon>
+            <mat-icon [style.color]="healthSectionColor">favorite</mat-icon>
             <span>System Health</span>
+            <!-- Add registration indicator -->
+            <div class="stream-status-indicator" 
+                 [ngClass]="{'registered': isStreamRegistered('health-metrics')}"
+                 [matTooltip]="isStreamRegistered('health-metrics') ? 'Stream Registered' : 'Stream Registration Pending'">
+            </div>
           </div>
         </mat-card-title>
       </mat-card-header>
@@ -174,8 +200,11 @@
         <mat-tab-group animationDuration="200ms" mat-stretch-tabs="false" mat-align-tabs="start">
           <mat-tab label="Servers">
             <div class="health-items">
-              <div class="health-item" *ngFor="let server of healthMetrics.servers">
-                <div class="health-icon" [ngClass]="getStatusClass(server.status)">
+              <div class="health-item" *ngFor="let server of healthMetrics.servers" 
+                   [style.border-left-color]="getStatusColor(server.status)">
+                <div class="health-icon" [ngClass]="getStatusClass(server.status)" 
+                     [style.background-color]="getStatusColor(server.status) + '15'"
+                     [style.color]="getStatusColor(server.status)">
                   <mat-icon>{{ server.status === 'healthy' ? 'check_circle' : server.status === 'warning' ? 'warning' : 'error' }}</mat-icon>
                 </div>
                 <div class="health-details">

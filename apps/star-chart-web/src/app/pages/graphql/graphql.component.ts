@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { WebSocketService } from '../../services/websocket.service';
+import { LoggerService } from '../../services/logger.service';
 import { Subscription, BehaviorSubject } from 'rxjs';
 
 interface GraphQLOperation {
@@ -68,9 +69,14 @@ export class GraphqlComponent implements OnInit, OnDestroy {
   }
 }`;
 
+  // Add property for section color
+  sectionColor = '#FF9800'; // Default GraphQL color (Orange)
   private subscriptions: Subscription[] = [];
   
-  constructor(private wsService: WebSocketService) {}
+  constructor(
+    private wsService: WebSocketService,
+    private logger: LoggerService
+  ) {}
   
   ngOnInit(): void {
     // Subscribe to GraphQL operation events
@@ -95,6 +101,21 @@ export class GraphqlComponent implements OnInit, OnDestroy {
           this.schemaString$.next(data.schemaString || '');
         }
       })
+    );
+
+    // Subscribe to section colors to get the graphql section color
+    this.subscriptions.push(
+      this.wsService.subscribe<Record<string, string>>('section-colors').subscribe(
+        colors => {
+          if (colors && colors['graphql']) {
+            this.sectionColor = colors['graphql'];
+            this.logger.debug('GraphQL', 'Received graphql section color', { color: colors['graphql'] });
+            
+            // Apply section color to the component's styles
+            this.applyThemeColor(this.sectionColor);
+          }
+        }
+      )
     );
     
     // Initialize with sample data
@@ -214,5 +235,11 @@ type Query {
     const currentOperations = this.operations$.getValue();
     this.operations$.next([newOperation, ...currentOperations]);
     this.updateOperationStats([...currentOperations, newOperation]);
+  }
+
+  // Method to apply theme color to component styles
+  private applyThemeColor(color: string): void {
+    document.documentElement.style.setProperty('--graphql-primary-color', color);
+    document.documentElement.style.setProperty('--graphql-light-color', `${color}20`);
   }
 }

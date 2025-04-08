@@ -1,0 +1,266 @@
+.metrics-view-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.metrics-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 2rem;
+  
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+}
+
+.metrics-title {
+  font-size: 2.5rem;
+  background: linear-gradient(90deg, #2196F3, #3F51B5);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  margin: 0;
+}
+
+.connection-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  
+  @media (max-width: 768px) {
+    flex-wrap: wrap;
+  }
+}
+
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 20px;
+  
+  .status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: #f44336; // Red for disconnected
+  }
+  
+  &.connected {
+    .status-dot {
+      background-color: #4caf50; // Green for connected
+      box-shadow: 0 0 8px rgba(76, 175, 80, 0.6);
+      animation: pulse 2s infinite;
+    }
+  }
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.5); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.stream-status-container {
+  width: 100%;
+  margin: 1rem 0;
+  display: flex;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 0.75rem;
+  border-radius: 8px;
+}
+
+.metrics-content {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+.card {
+  border-radius: 12px;
+  overflow: hidden;
+  
+  &.mock-data {
+    border-left: 4px solid #2196F3; // Blue for mock data
+    
+    .data-type-badge {
+      background-color: #2196F3;
+      color: white;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: bold;
+      margin-left: 1rem;
+    }
+  }
+}
+
+.streams-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.stream-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem;
+  background-color: rgba(0, 0, 0, 0.02);
+  border-radius: 8px;
+  transition: transform 0.2s ease;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+}
+
+.stream-status-circle {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 4px;
+  
+  &.status-unregistered {
+    background-color: #9e9e9e; // Gray
+  }
+  
+  &.status-mock {
+    background-color: #2196F3; // Blue for mock data
+    box-shadow: 0 0 8px rgba(33, 150, 243, 0.6);
+  }
+  
+  &.status-live {
+    background-color: #4caf50; // Green for live data
+    box-shadow: 0 0 8px rgba(76, 175, 80, 0.6);
+    animation: pulse 2s infinite;
+  }
+}
+
+.stream-info {
+  flex: 1;
+}
+
+.stream-name {
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.stream-details {
+  font-size: 0.85rem;
+  color: #757575;
+  margin-bottom: 0.5rem;
+}
+
+.stream-timestamp {
+  font-size: 0.75rem;
+  color: #9e9e9e;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.metric-box {
+  background-color: rgba(0, 0, 0, 0.02);
+  padding: 1rem;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.metric-label {
+  font-size: 0.9rem;
+  color: #757575;
+  margin-bottom: 0.5rem;
+}
+
+.metric-value {
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: #212121;
+}
+
+.metric-unit {
+  font-size: 0.9rem;
+  color: #757575;
+}
+
+.health-category {
+  margin-bottom: 1.5rem;
+  
+  h3 {
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+    color: #424242;
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 0.5rem;
+  }
+}
+
+.health-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.health-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem;
+  border-radius: 8px;
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+.health-status {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+  
+  &.healthy {
+    background-color: rgba(76, 175, 80, 0.15);
+    color: #2e7d32;
+  }
+  
+  &.warning {
+    background-color: rgba(255, 152, 0, 0.15);
+    color: #ef6c00;
+  }
+  
+  &.error {
+    background-color: rgba(244, 67, 54, 0.15);
+    color: #c62828;
+  }
+}
+
+.health-details {
+  flex: 1;
+}
+
+.health-name {
+  font-weight: 500;
+  color: #424242;
+  margin-bottom: 0.25rem;
+}
+
+.health-stats {
+  display: flex;
+  font-size: 0.85rem;
+  color: #757575;
+  gap: 1rem;
+  flex-wrap: wrap;
+}

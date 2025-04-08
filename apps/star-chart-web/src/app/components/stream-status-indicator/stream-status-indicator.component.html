@@ -1,0 +1,19 @@
+<div class="status-container">
+  <!-- Connection status -->
+  <div class="connecting-indicator">
+    <div class="status-circle" 
+         [ngClass]="(wsConnected$ | async) ? 'status-registered' : 'status-unregistered'"
+         [matTooltip]="(wsConnected$ | async) ? 'Connected to WebSocket server' : 'Not connected'">
+    </div>
+    <span class="connection-text">{{ (wsConnected$ | async) ? 'Connected' : 'Disconnected' }}</span>
+  </div>
+  
+  <!-- Stream status indicators -->
+  <ng-container *ngFor="let stream of (streamStatuses$ | async)">
+    <div class="stream-status" *ngIf="stream.important || (wsConnected$ | async)"
+         [matTooltip]="stream.description + ' - ' + (stream.registered ? 'Registered' : 'Not registered')">
+      <div class="status-circle" [ngClass]="getStatusClass(stream.registered)"></div>
+      <div class="status-label">{{ stream.displayName }}</div>
+    </div>
+  </ng-container>
+</div>

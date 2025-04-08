@@ -4,14 +4,16 @@ import { DashboardComponent } from './dashboard.component';
 import { UserStateModule } from '../../components/user-state/user-state.module';
 import { UserGraphModule } from '../../components/user-graph/user-graph.module';
 import { RouterModule } from '@angular/router';
+import { StreamStatusIndicatorModule } from '../../components/stream-status-indicator/stream-status-indicator.module';
 
-// Angular Material Imports - Fix the imports
+// Angular Material Imports
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { MatTabsModule } from '@angular/material/tabs'; // Changed from MatTabModule to MatTabsModule
+import { MatTabsModule } from '@angular/material/tabs';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 @NgModule({
   declarations: [DashboardComponent],
@@ -27,10 +29,12 @@ import { MatDividerModule } from '@angular/material/divider';
     MatTabsModule,
     MatProgressBarModule,
     MatDividerModule,
+    MatTooltipModule,
     
     // Custom Modules
     UserStateModule,
-    UserGraphModule
+    UserGraphModule,
+    StreamStatusIndicatorModule // Add the new module
   ],
   exports: [DashboardComponent]
 })

@@ -445,6 +445,13 @@
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0,0,0,0.05);
   }
+  
+  transition: border-left-color 0.3s ease;
+  border-left-width: 4px;
+  
+  .health-icon {
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
 }
 
 .health-icon {
@@ -492,6 +499,24 @@
     
     &:last-child {
       margin-right: 0;
+    }
+  }
+}
+
+.health-status {
+  transition: border-color 0.3s ease;
+  
+  mat-card-header {
+    transition: background-color 0.3s ease;
+  }
+  
+  .card-title-with-icon {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    
+    mat-icon {
+      transition: color 0.3s ease;
     }
   }
 }
@@ -625,6 +650,70 @@
   top: -18px;
   font-size: 0.8rem;
   color: #757575;
+}
+
+.data-status {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.refresh-button {
+  margin-left: 8px;
+  width: 24px;
+  height: 24px;
+  line-height: 24px;
+  
+  .mat-icon {
+    font-size: 18px;
+    line-height: 18px;
+    height: 18px;
+    width: 18px;
+  }
+  
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+}
+
+// Registration status styles
+.registration-status {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 300px;
+  margin-left: auto;
+  margin-right: auto;
+  
+  span {
+    font-size: 0.9rem;
+    color: #757575;
+    margin-top: 0.5rem;
+  }
+  
+  mat-progress-bar {
+    width: 100%;
+  }
+}
+
+.registration-complete {
+  color: #4CAF50;
+  margin-left: 0.5rem;
+  font-weight: bold;
+}
+
+.stream-status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #9e9e9e;
+  margin-left: 0.5rem;
+  
+  &.registered {
+    background-color: #4CAF50;
+    box-shadow: 0 0 5px rgba(76, 175, 80, 0.5);
+  }
 }
 
 // Media query adjustments for smaller screens

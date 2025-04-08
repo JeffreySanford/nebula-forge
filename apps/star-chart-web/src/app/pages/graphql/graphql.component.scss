@@ -1,9 +1,38 @@
+:root {
+  --graphql-primary-color: #FF9800;
+  --graphql-light-color: rgba(255, 152, 0, 0.1);
+}
+
 .graphql-container {
   padding: 20px;
 }
 
+.graphql-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.graphql-title {
+  background: linear-gradient(90deg, var(--graphql-primary-color), #fb8c00, #ffb74d);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+}
+
 .main-card {
   margin-bottom: 20px;
+  border-top: 4px solid var(--graphql-primary-color);
+  
+  mat-card-header {
+    background-color: var(--graphql-light-color);
+  }
+  
+  mat-card-title {
+    color: var(--graphql-primary-color);
+  }
 }
 
 .graphql-content {
@@ -89,7 +118,7 @@ h3 {
 
 .type-name {
   font-weight: 500;
-  color: #3f51b5;
+  color: var(--graphql-primary-color);
 }
 
 .type-category {

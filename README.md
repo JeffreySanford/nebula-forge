@@ -1,10 +1,44 @@
-# NebulaForge
+# Nebula Forge
 
-<a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
+<p align="center">
+  <img src="docs/assets/nebula-forge-logo.png" alt="Nebula Forge Logo" width="200" />
+</p>
 
-✨ Your new, shiny [Nx workspace](https://nx.dev) is almost ready ✨.
+<p align="center">
+  A comprehensive system monitoring and management platform with real-time dashboards, metrics visualization, and advanced analytics.
+</p>
 
-[Learn more about this workspace setup and its capabilities](https://nx.dev/nx-api/js?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
+<p align="center">
+  <a href="#key-features">Features</a> •
+  <a href="#architecture">Architecture</a> •
+  <a href="#getting-started">Getting Started</a> •
+  <a href="#development">Development</a> •
+  <a href="#components">Components</a> •
+  <a href="#deployment">Deployment</a> •
+  <a href="#contributing">Contributing</a>
+</p>
+
+## Key Features
+
+- **Real-time Metrics Dashboard:** Monitor application health and performance in real time
+- **Multi-System Monitoring:** Track servers, databases, and services from a single interface
+- **GraphQL Integration:** Interactive GraphQL explorer with performance analytics
+- **Database Monitoring:** Real-time insights into database operations and health
+- **WebSocket Communication:** Live updates using bidirectional WebSocket connections
+- **Material Design UI:** Modern, responsive interface built with Angular Material
+- **Mock Data Generation:** Development mode with realistic simulated data
+- **Comprehensive Logging:** Advanced logging system with filtering and search capabilities
+
+## Architecture
+
+Nebula Forge is built with a microservices architecture consisting of the following major components:
+
+- **Star Forge API**: NestJS backend service providing metrics, WebSocket endpoints, and GraphQL API
+- **Star Chart Web**: Angular frontend application for visualization and user interaction
+- **Database Layer**: MongoDB for data persistence and analytics
+- **Metrics Collection**: System for gathering and processing metrics from various sources
+
+### System Diagram
 
 ## Finish your CI setup
 

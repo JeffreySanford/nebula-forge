@@ -1,0 +1,15 @@
+<div class="connection-indicator" [class.connected]="isConnected$ | async">
+  <div class="indicator-dot"></div>
+  <span>
+    {{ (isConnected$ | async) ? 
+        (isMockMode ? 'Mock Data Active' : 'Live Data Connected') : 
+        'Connecting...' }}
+  </span>
+  <button *ngIf="(isConnected$ | async) === false" 
+          mat-icon-button 
+          class="retry-button" 
+          matTooltip="Retry connection"
+          (click)="retryConnection()">
+    <mat-icon>refresh</mat-icon>
+  </button>
+</div>
