@@ -1,5 +1,15 @@
-import { Controller, Get, Post, Body, Delete, HttpStatus, HttpException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Delete } from '@nestjs/common';
 import { MetricsService } from '../services/metrics.service';
+import { CreateMetricDto } from './dto/create-metric.dto';
+import { SystemMetric } from './interfaces/metric.interface';
+
+interface HistoricalMetricsResponse {
+  [key: string]: SystemMetric[];
+}
+
+interface DeleteResult {
+  deleted: number;
+}
 
 @Controller('api/metrics')
 export class MetricsController {
@@ -63,12 +73,12 @@ export class MetricsController {
   }
 
   @Get('historical')
-  async getHistorical(): Promise<Record<string, SystemMetric[]>> {
+  async getHistorical(): Promise<HistoricalMetricsResponse> {
     return this.metricsService.getHistoricalData();
   }
 
   @Delete()
-  async deleteAll(): Promise<{ deleted: number }> {
+  async deleteAll(): Promise<DeleteResult> {
     return this.metricsService.deleteAll();
   }
 }

@@ -12,15 +12,13 @@ import { LoggerService } from '../services/logger.service';
 import { Injectable } from '@nestjs/common';
 import { MetricsService } from '../services/metrics.service';
 import { Subscription, interval } from 'rxjs';
-
-interface RegistrationPayload {
-  stream: string;
-  options?: {
-    interval?: string;
-    details?: string[];
-    requestId?: string;
-  };
-}
+import { 
+  RegistrationPayload,
+  PingPayload,
+  MetricsMessage,
+  PongResponse,
+  RegistrationAckResponse
+} from '../interfaces/metrics.types';
 
 @WebSocketGateway({
   cors: {
@@ -43,6 +41,7 @@ export class MetricsGateway implements OnGatewayConnection, OnGatewayDisconnect 
   ) {
     this.activeClients = 0;
     this.setupRegularDataStreams();
+    this.loggerService.info('MetricsGateway', 'Metrics Gateway initialized with typed interfaces');
   }
 
   private setupRegularDataStreams(): void {
@@ -71,6 +70,10 @@ export class MetricsGateway implements OnGatewayConnection, OnGatewayDisconnect 
         this.loggerService.debug('MetricsGateway', 'Broadcasting performance metrics');
       }
     }));
+
+    this.loggerService.info('MetricsGateway', 'Regular data streams configured', { 
+      streams: ['metrics', 'health-metrics', 'performance-metrics'] 
+    });
   }
   
   handleConnection(client: Socket): void {
@@ -134,12 +137,16 @@ export class MetricsGateway implements OnGatewayConnection, OnGatewayDisconnect 
     
     // Send acknowledgment with same requestId if provided
     if (options.requestId) {
-      client.emit('registration-ack', {
+      const ackResponse: RegistrationAckResponse = {
+        action: 'registration-ack',
         success: true,
         stream: streamType,
         requestId: options.requestId,
-        message: `Successfully registered for ${streamType} stream`
-      });
+        message: `Successfully registered for ${streamType} stream`,
+        timestamp: new Date().toISOString()
+      };
+      
+      client.emit('registration-ack', ackResponse);
       
       this.loggerService.debug('MetricsGateway', `Sent registration acknowledgment for ${streamType}`, {
         requestId: options.requestId,
@@ -178,17 +185,17 @@ export class MetricsGateway implements OnGatewayConnection, OnGatewayDisconnect 
         break;
     }
   }
-  
+
   @SubscribeMessage('ping')
   handlePing(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: any
+    @MessageBody() payload: PingPayload
   ): void {
     // Handle ping requests, useful for testing
-    const responsePayload = {
+    const responsePayload: PongResponse = {
       action: 'pong',
       timestamp: new Date().toISOString(),
-      requestId: payload?.options?.requestId || undefined,
+      requestId: payload?.options?.requestId,
       serverTime: new Date().toISOString()
     };
     
@@ -196,7 +203,7 @@ export class MetricsGateway implements OnGatewayConnection, OnGatewayDisconnect 
     client.emit('pong', responsePayload);
     this.loggerService.debug('MetricsGateway', 'Ping received, sent pong', { clientId: client.id });
   }
-  
+
   private sendInitialData(client: Socket, streamType: string): void {
     switch(streamType) {
       case 'metrics':
@@ -212,28 +219,18 @@ export class MetricsGateway implements OnGatewayConnection, OnGatewayDisconnect 
         client.emit('health-metrics', this.metricsService.generateHealthMetrics());
         break;
     }
+    
+    this.loggerService.debug('MetricsGateway', `Sent initial data for stream: ${streamType}`, { clientId: client.id });
   }
 
-  private handleMockMessage(message: any): void {
-    // Create a typed interface for message handling
-    interface MetricsMessage {
-      action: string;
-      channel?: string;
-      stream?: string;
-      options?: {
-        requestId?: string;
-        delayMs?: number;
-        [key: string]: unknown;
-      };
-      _forceError?: boolean;
-      target?: string;
-    }
-
-    // Type the incoming message instead of using 'any'
-    const typedMessage = message as MetricsMessage;
-    this.loggerService.info('MetricsGateway', `Mock mode: Processing message ${JSON.stringify(typedMessage)}`);
+  private handleMockMessage(message: MetricsMessage): void {
+    this.loggerService.info('MetricsGateway', `Mock mode: Processing message`, { 
+      action: message.action,
+      stream: message.stream,
+      channel: message.channel
+    });
     
-    // ...existing code...
+    // Additional mock message processing could be added here
   }
 
   onModuleDestroy(): void {
@@ -247,5 +244,7 @@ export class MetricsGateway implements OnGatewayConnection, OnGatewayDisconnect 
         subscription.unsubscribe();
       }
     });
+    
+    this.loggerService.info('MetricsGateway', 'Cleaning up resources on module destroy');
   }
 }

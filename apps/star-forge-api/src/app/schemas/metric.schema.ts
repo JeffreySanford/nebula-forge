@@ -25,7 +25,7 @@ export class Metric extends Document {
   color?: string;
   
   @Prop({ type: Object })
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export const MetricSchema = SchemaFactory.createForClass(Metric);
