@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // ... existing options ...
+    "experimentalDecorators": true, // Ensure this is true
+    "emitDecoratorMetadata": true, // Ensure this is true
+    // ... existing options ...
+  },
+  // ... rest of the file ...
+}

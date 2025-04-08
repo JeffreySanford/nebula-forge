@@ -1,0 +1,19 @@
+# This file is used by the build system to adjust CSS and JS output to support specific browsers
+# For additional information about the format and options, visit https://github.com/browserslist/browserslist
+
+# Development mode
+[development]
+last 1 chrome version
+last 1 firefox version
+last 1 safari version
+
+# Production mode - targeted browsers for the application
+[production]
+last 2 Chrome versions
+last 2 Firefox versions
+last 2 Edge versions
+last 2 Safari versions
+last 2 iOS versions
+last 2 ChromeAndroid versions
+not IE 11
+not dead

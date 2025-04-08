@@ -1,0 +1,14 @@
+<mat-card class="graphql-tile" [ngClass]="{'mock-data-border': isMockData, 'mock-data-indicator': isMockData}">
+  <mat-card-title>GraphQL Metrics</mat-card-title>
+  <mat-card-content>
+    <div class="graphql-container">
+      <div *ngFor="let query of (queries$ | async)">
+        <div class="query-entry" [ngClass]="{'error': query.status === 'error', 'pending': query.status === 'pending'}">
+          <span class="query-name">{{ query.name }}</span>
+          <span class="query-details">{{ query.duration }}ms &#64; {{ query.timestamp | date:'short' }}</span>
+          <span class="query-status">{{ query.status }}</span>
+        </div>
+      </div>
+    </div>
+  </mat-card-content>
+</mat-card>

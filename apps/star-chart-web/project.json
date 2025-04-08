@@ -1,0 +1,75 @@
+{
+  "name": "star-chart-web",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/star-chart-web/src",
+  "projectType": "application",
+  "targets": {
+    "build": {
+      "executor": "@angular-devkit/build-angular:browser",
+      "options": {
+        "outputPath": "dist/apps/star-chart-web",
+        "index": "apps/star-chart-web/src/index.html",
+        "main": "apps/star-chart-web/src/main.ts",
+        "polyfills": "apps/star-chart-web/src/polyfills.ts",
+        "tsConfig": "apps/star-chart-web/tsconfig.app.json",
+        "assets": [
+          "apps/star-chart-web/src/favicon.ico",
+          "apps/star-chart-web/src/assets"
+        ],
+        "styles": ["apps/star-chart-web/src/styles.scss"],
+        "scripts": []
+      },
+      "configurations": {
+        "production": {
+          "optimization": true,
+          "outputHashing": "all",
+          "sourceMap": false,
+          "extractCss": true,
+          "namedChunks": false,
+          "aot": true,
+          "extractLicenses": true,
+          "vendorChunk": false,
+          "buildOptimizer": true
+        },
+        "development": {
+          "optimization": false,
+          "sourceMap": true,
+          "extractCss": false,
+          "namedChunks": true,
+          "aot": false,
+          "vendorChunk": true,
+          "buildOptimizer": false
+        }
+      }
+    },
+    "serve": {
+      "executor": "@angular-devkit/build-angular:dev-server",
+      "options": {
+        "buildTarget": "star-chart-web:build"
+      },
+      "configurations": {
+        "production": {
+          "buildTarget": "star-chart-web:build:production"
+        },
+        "development": {
+          "buildTarget": "star-chart-web:build:development"
+        }
+      }
+    },
+    "test": {
+      "executor": "@angular-devkit/build-angular:karma",
+      "options": {
+        "main": "apps/star-chart-web/src/test.ts",
+        "polyfills": "apps/star-chart-web/src/polyfills.ts",
+        "tsConfig": "apps/star-chart-web/tsconfig.spec.json",
+        "karmaConfig": "apps/star-chart-web/karma.conf.js",
+        "assets": [
+          "apps/star-chart-web/src/favicon.ico",
+          "apps/star-chart-web/src/assets"
+        ],
+        "styles": ["apps/star-chart-web/src/styles.scss"],
+        "scripts": []
+      }
+    }
+  }
+}

@@ -1,0 +1,7 @@
+<mat-toolbar color="primary" class="footer-toolbar">
+  <span class="footer-copyright">© {{ currentYear }} Craft Fusion</span>
+  <span class="footer-links">
+    <a mat-button *ngFor="let item of navigationItems" 
+       [routerLink]="item.path">{{ item.label }}</a>
+  </span>
+</mat-toolbar>

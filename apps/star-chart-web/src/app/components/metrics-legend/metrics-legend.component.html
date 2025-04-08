@@ -1,0 +1,12 @@
+<div class="metrics-legend">
+  <h3>Metrics Legend</h3>
+  <div class="legend-items">
+    <div *ngFor="let item of legendItems$ | async" class="legend-item">
+      <div class="color-sample" [style.background-color]="item.color"></div>
+      <div class="legend-info">
+        <div class="legend-name">{{item.name}}</div>
+        <div class="legend-description">{{item.description}}</div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,27 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "../../dist/out-tsc",
+    "module": "CommonJS",
+    "target": "ES2022",
+    "moduleResolution": "node",
+    "strict": true,
+    "declaration": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "@app/*": ["./src/app/*"],
+      "@dto/*": ["./src/app/dto/*"],
+      "@interfaces/*": ["./src/app/interfaces/*"],
+      "@schemas/*": ["./src/app/schemas/*"]
+    },
+    "typeRoots": ["./node_modules/@types"],
+    "sourceMap": true
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "**/*.spec.ts"]
+}

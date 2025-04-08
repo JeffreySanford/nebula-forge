@@ -1,0 +1,90 @@
+<div class="contact-container" @fadeIn>
+  <h1 class="gradient-text">Contact Us</h1>
+  
+  <div class="contact-content">
+    <div class="contact-info" @slideIn>
+      <mat-card class="info-card">
+        <mat-card-content>
+          <h2>Get in Touch</h2>
+          <p class="contact-intro">
+            Have questions about Craft Fusion? Looking for support or want to give feedback?
+            Our team is ready to assist you!
+          </p>
+          
+          <div class="contact-methods" @contactItems>
+            <div class="contact-method" *ngFor="let method of contactMethods">
+              <div class="icon-container">
+                <mat-icon>{{method.icon}}</mat-icon>
+              </div>
+              <div class="method-details">
+                <h3>{{method.label}}</h3>
+                <p>{{method.value}}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="social-links">
+            <a href="#" class="social-icon"><mat-icon>facebook</mat-icon></a>
+            <a href="#" class="social-icon"><mat-icon>twitter</mat-icon></a>
+            <a href="#" class="social-icon"><mat-icon>linkedin</mat-icon></a>
+            <a href="#" class="social-icon"><mat-icon>github</mat-icon></a>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+    
+    <div class="contact-form-container">
+      <mat-card class="form-card">
+        <mat-card-content>
+          <h2>Send us a Message</h2>
+          
+          <div *ngIf="submitSuccess" class="success-message">
+            <mat-icon>check_circle</mat-icon>
+            <span>Your message has been sent successfully!</span>
+          </div>
+          
+          <form [formGroup]="contactForm" (ngSubmit)="onSubmit()">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Your Name</mat-label>
+              <input matInput formControlName="name" placeholder="Enter your name">
+              <mat-error *ngIf="contactForm.get('name')?.invalid && contactForm.get('name')?.touched">
+                Please enter your name
+              </mat-error>
+            </mat-form-field>
+            
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Email Address</mat-label>
+              <input matInput formControlName="email" placeholder="Enter your email">
+              <mat-error *ngIf="contactForm.get('email')?.invalid && contactForm.get('email')?.touched">
+                Please enter a valid email
+              </mat-error>
+            </mat-form-field>
+            
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Subject</mat-label>
+              <input matInput formControlName="subject" placeholder="What's this about?">
+              <mat-error *ngIf="contactForm.get('subject')?.invalid && contactForm.get('subject')?.touched">
+                Please enter a subject
+              </mat-error>
+            </mat-form-field>
+            
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Message</mat-label>
+              <textarea matInput formControlName="message" rows="5" placeholder="Your message..."></textarea>
+              <mat-error *ngIf="contactForm.get('message')?.invalid && contactForm.get('message')?.touched">
+                Message must be at least 10 characters
+              </mat-error>
+            </mat-form-field>
+            
+            <div class="form-actions">
+              <button mat-raised-button color="primary" type="submit" [disabled]="contactForm.invalid || submitted">
+                <mat-icon>send</mat-icon>
+                <span>{{submitted ? 'Sending...' : 'Send Message'}}</span>
+              </button>
+            </div>
+          </form>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  </div>
+</div>

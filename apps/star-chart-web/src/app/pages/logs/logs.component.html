@@ -1,0 +1,61 @@
+<div class="logs-container">
+  <h1>System Logs</h1>
+  <div class="logs-content">
+    <app-log-viewer [maxLogs]="100"></app-log-viewer>
+  </div>
+
+  <!-- Test Section -->
+  <div class="log-test-section">
+    <div class="test-section-header">
+      <h2>Test Actions</h2>
+    </div>
+    
+    <div class="test-categories">
+      <!-- Log Type Tests -->
+      <div class="test-category">
+        <h3>Log Message Types</h3>
+        <div class="test-buttons">
+          <button mat-fab class="log-info-btn" aria-label="Test Info Log" 
+                  (click)="testLogInfo()" matTooltip="Log Info">
+            <mat-icon>info</mat-icon>
+          </button>
+          <button mat-fab class="log-warn-btn" aria-label="Test Warn Log" 
+                  (click)="testLogWarn()" matTooltip="Log Warn">
+            <mat-icon>warning</mat-icon>
+          </button>
+          <button mat-fab class="log-error-btn" aria-label="Test Error Log" 
+                  (click)="testLogError()" matTooltip="Log Error">
+            <mat-icon>error</mat-icon>
+          </button>
+          <button mat-fab class="log-debug-btn" aria-label="Test Debug Log" 
+                  (click)="testLogDebug()" matTooltip="Log Debug">
+            <mat-icon>bug_report</mat-icon>
+          </button>
+        </div>
+      </div>
+      
+      <!-- WebSocket Tests -->
+      <div class="test-category">
+        <h3>WebSocket Behavior Tests</h3>
+        <div class="test-buttons">
+          <button mat-fab class="ws-error-btn" aria-label="Test WebSocket Error" 
+                  (click)="testWsError()" matTooltip="WS Error">
+            <mat-icon>wifi_off</mat-icon>
+          </button>
+          <button mat-fab class="ws-slow-btn" aria-label="Test WebSocket Slow" 
+                  (click)="testWsSlow()" matTooltip="WS Slow">
+            <mat-icon>hourglass_bottom</mat-icon>
+          </button>
+          <button mat-fab class="ws-normal-btn" aria-label="Test WebSocket Normal" 
+                  (click)="testWsNormal()" matTooltip="WS Normal">
+            <mat-icon>wifi</mat-icon>
+          </button>
+          <button mat-fab class="ws-mock-btn" aria-label="Toggle Mock Mode" 
+                  (click)="toggleMockMode()" matTooltip="Toggle Mock Mode">
+            <mat-icon>toggle_on</mat-icon>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

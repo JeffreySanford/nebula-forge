@@ -1,0 +1,21 @@
+<mat-toolbar color="primary" class="nav-toolbar">
+  <span class="nav-title">Craft Fusion</span>
+  
+  <!-- Desktop navigation -->
+  <span class="nav-links desktop-nav">
+    <a mat-button *ngFor="let item of navigationItems" 
+       [routerLink]="item.path" 
+       routerLinkActive="active">{{ item.label }}</a>
+  </span>
+  
+  <!-- Mobile navigation -->
+  <button mat-icon-button class="mobile-menu-button" [matMenuTriggerFor]="menu">
+    <mat-icon>menu</mat-icon>
+  </button>
+  <mat-menu #menu="matMenu">
+    <a mat-menu-item *ngFor="let item of navigationItems"
+       [routerLink]="item.path"
+       routerLinkActive="active">{{ item.label }}</a>
+  </mat-menu>
+</mat-toolbar>
+<router-outlet></router-outlet>

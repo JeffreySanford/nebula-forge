@@ -1,0 +1,34 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "../../dist/out-tsc",
+    "module": "esnext",
+    "target": "ES2022",
+    "moduleResolution": "node",
+    "lib": ["ES2022", "DOM"],
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "useDefineForClassFields": false,
+    "baseUrl": "./",
+    "paths": {
+      "@app/*": ["src/app/*"]
+    },
+    "strict": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "types": [],
+    "resolveJsonModule": true,
+    // Remove composite settings
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false
+  },
+  "files": [],
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "src/test.ts", "src/**/*.spec.ts"],
+  // Remove references completely as they require composite projects
+  "references": []
+}

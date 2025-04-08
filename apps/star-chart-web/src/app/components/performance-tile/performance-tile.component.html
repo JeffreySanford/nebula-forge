@@ -1,0 +1,8 @@
+<mat-card class="perf-tile">
+  <mat-card-title>Performance Feed</mat-card-title>
+  <mat-card-content>
+    <div *ngFor="let m of metrics" class="perf-entry">
+      {{ m.name }}: {{ formatValue(m) }} ({{ m.timestamp | date:'shortTime' }})
+    </div>
+  </mat-card-content>
+</mat-card>

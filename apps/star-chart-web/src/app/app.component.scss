@@ -1,0 +1,5 @@
+.main-content {
+  min-height: calc(100vh - 128px); /* Adjust based on your header/footer height */
+  padding-bottom: 64px; /* This should match your footer height */
+  box-sizing: border-box;
+}

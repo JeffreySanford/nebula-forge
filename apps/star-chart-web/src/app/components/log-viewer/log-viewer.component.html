@@ -1,0 +1,72 @@
+<div class="log-viewer-container" @fadeIn>
+  <div class="log-header">
+    <h3>System Logs</h3>
+    <div class="connection-status" [ngClass]="{'connected': (connectionStatus$ | async)}">
+      <div class="status-indicator"></div>
+      <span>{{ (connectionStatus$ | async) ? 'Connected' : 'Disconnected' }}</span>
+    </div>
+  </div>
+  
+  <div class="log-filters">
+    <div class="filter-group">
+      <label for="level-filter">Level:</label>
+      <select id="level-filter" [(ngModel)]="level">
+        <option value="all">All Levels</option>
+        <option value="info">Info</option>
+        <option value="warning">Warning</option>
+        <option value="error">Error</option>
+        <option value="debug">Debug</option>
+      </select>
+    </div>
+    
+    <div class="filter-group">
+      <label for="source-filter">Source:</label>
+      <select id="source-filter" [(ngModel)]="sourceFilter">
+        <option value="all">All Sources</option>
+        <option value="api">API Only</option>
+        <option value="ui">UI Only</option>
+        <option value="metrics">Metrics</option>
+        <option value="websocket">WebSocket</option>
+      </select>
+    </div>
+    
+    <div class="filter-group">
+      <label for="search-filter">Search:</label>
+      <input type="text" id="search-filter" [(ngModel)]="filter" placeholder="Filter logs...">
+    </div>
+    
+    <div class="filter-actions">
+      <button (click)="clearFilters()">Clear Filters</button>
+    </div>
+    
+    <div class="filter-group">
+      <label for="api-focus-button">Quick Filter:</label>
+      <button id="api-focus-button" (click)="sourceFilter = 'api'">API Logs</button>
+    </div>
+  </div>
+  
+  <div class="logs-container">
+    <div *ngIf="groupedLogs.length === 0" class="no-logs">
+      No logs available.
+    </div>
+    
+    <div *ngFor="let group of groupedLogs" class="log-group">
+      <div class="time-separator">{{ group.title }}</div>
+      
+      <div class="log-entries" @listAnimation>
+        <div *ngFor="let log of group.logs" 
+             class="log-entry" 
+             [ngClass]="getLevelClass(log.level)"
+             [appMockData]="log.isMock">
+          <div class="log-timestamp">{{ log.timestamp | date:'HH:mm:ss' }}</div>
+          <div class="log-level">{{ log.level | uppercase }}</div>
+          <div class="log-source" [ngClass]="getSourceClass(log.source)">{{ log.source }}</div>
+          <div class="log-message">{{ log.message }}</div>
+          <div *ngIf="log.data" class="log-data">
+            <pre>{{ log.data | json }}</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

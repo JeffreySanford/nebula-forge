@@ -1,0 +1,65 @@
+<div class="performance-container" @fadeIn>
+  <h1 class="gradient-text">Performance Overview</h1>
+  <p class="subtitle">Real-time insights into application and system performance.</p>
+
+  <div class="metrics-display-grid">
+    <mat-card class="metric-card" *ngFor="let metric of (performanceMetrics$ | async)"
+              [ngClass]="{'mock-data-border': metric.isMock}">
+      <mat-card-header>
+        <mat-card-title>{{ metric.name }}</mat-card-title>
+        <mat-card-subtitle>{{ metric.timestamp | date:'mediumTime' }}</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="metric-value-container">
+          <span class="metric-value" [style.color]="getMetricColor(metric)">
+            {{ metric.value | number:'1.0-2' }}
+          </span>
+          <span class="metric-unit">{{ metric.unit }}</span>
+        </div>
+        <!-- Basic bar visualization -->
+        <div class="metric-bar-container">
+          <div class="metric-bar" [style.width.%]="metric.value > 100 ? 100 : metric.value" [style.background-color]="getMetricColor(metric)"></div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- New WebSocket Stats Card -->
+    <mat-card class="metric-card websocket-stats-card"
+              *ngIf="webSocketStats$ | async as stats"
+              [matTooltip]="getWebSocketTooltip(stats)"
+              (click)="showWebSocketDetails(stats)">
+      <mat-card-header>
+        <mat-card-title>WebSocket Connections</mat-card-title>
+        <mat-card-subtitle>Live connection status</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="metric-value-container">
+          <span class="metric-value" [ngClass]="{'connected': stats.open > 0, 'disconnected': stats.open === 0}">
+            {{ stats.open }}
+          </span>
+          <span class="metric-unit">Open</span>
+        </div>
+        <div class="websocket-summary">
+          <span class="stat-item errors" *ngIf="stats.errors > 0">
+            <mat-icon>error_outline</mat-icon> {{ stats.errors }} Errors
+          </span>
+          <span class="stat-item attempting" *ngIf="stats.attempting > 0">
+            <mat-icon>sync</mat-icon> Attempting...
+          </span>
+        </div>
+      </mat-card-content>
+    </mat-card>
+    <!-- End New WebSocket Stats Card -->
+
+    <mat-card class="metric-card placeholder" *ngIf="(performanceMetrics$ | async)?.length === 0 && (webSocketStats$ | async) === null">
+       <mat-card-title>Loading Performance Data...</mat-card-title>
+       <mat-card-content>
+         <p>Waiting for real-time performance metrics...</p>
+         <div class="loading-spinner"></div>
+       </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Include the performance tile component if needed -->
+  <!-- <app-performance-tile></app-performance-tile> -->
+</div>

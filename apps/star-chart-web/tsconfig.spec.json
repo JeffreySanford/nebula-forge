@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "../../dist/out-tsc/spec",
+    "module": "esnext",
+    "moduleResolution": "node",
+    "types": ["jest", "node"],
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true
+  },
+  "files": ["src/test-setup.ts", "src/polyfills.ts"],
+  "include": ["jest.config.ts", "src/**/*.spec.ts", "src/**/*.d.ts"]
+}

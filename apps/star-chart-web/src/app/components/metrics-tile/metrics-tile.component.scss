@@ -1,0 +1,40 @@
+.metric-tile {
+  font-family: 'Roboto', sans-serif;
+  margin-bottom: 16px;
+}
+
+@keyframes highlight {
+  0% {
+    background-color: #ffeb3b;
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.metric-entry {
+  padding: 8px 0;
+  color: #1565c0;
+  border-bottom: 1px solid #eee;
+  animation: highlight 1s ease-in-out;
+}
+
+.metric-name {
+  font-weight: bold;
+}
+
+.metric-value {
+  margin-left: 8px;
+  color: #2196F3;
+}
+
+.metric-unit {
+  color: #757575;
+  margin-left: 4px;
+}
+
+.metric-time {
+  float: right;
+  color: #757575;
+  font-size: 0.9em;
+}

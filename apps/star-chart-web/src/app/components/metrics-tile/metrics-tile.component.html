@@ -1,0 +1,11 @@
+<mat-card class="metrics-tile" [ngClass]="{'mock-data-border': hasMockData, 'mock-data-indicator': hasMockData}">
+  <mat-card-title>System Metrics</mat-card-title>
+  <mat-card-content>
+    <div *ngFor="let metric of (metrics$ | async)" class="metric-entry">
+      <span class="metric-name">{{ metric.name }}</span>:
+      <span class="metric-value">{{ metric.value }}</span>
+      <span class="metric-unit">{{ metric.unit }}</span>
+      <span class="metric-time">({{ metric.timestamp | date:'shortTime' }})</span>
+    </div>
+  </mat-card-content>
+</mat-card>

@@ -1,0 +1,33 @@
+<mat-card class="log-feed-tile" [appMockData]="hasMockData">
+  <mat-card-title>Log Feed</mat-card-title>
+  <mat-card-content>
+    <div *ngFor="let log of logs" 
+         class="log-entry" 
+         [ngClass]="'level-' + log.level">
+      <div class="log-content" 
+           [style.border-left-color]="log.color" 
+           [style.background-color]="log.backgroundColor">
+        <!-- Formatted timestamp -->
+        <span class="log-timestamp">{{ log.timestamp | date:'yyyy-MM-dd HH:mm:ss' }}</span>
+        
+        <!-- Level indicator -->
+        <span class="log-level" [style.color]="log.color">{{ log.level | uppercase }}</span>
+        
+        <!-- Source with highlighting for component category -->
+        <span class="log-source" 
+              [ngClass]="{'highlight': log.highlightComponent}"
+              [style.border-color]="log.color">
+          {{ log.source }}
+        </span>
+        
+        <!-- Message -->
+        <span class="log-message">{{ log.message }}</span>
+        
+        <!-- Data preview if available -->
+        <div *ngIf="log.data" class="log-data">
+          <pre>{{ log.data | json }}</pre>
+        </div>
+      </div>
+    </div>
+  </mat-card-content>
+</mat-card>

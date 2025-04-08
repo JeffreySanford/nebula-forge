@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "../../dist/out-tsc/spec",
+    "module": "Node16",
+    "types": ["jest", "node"],
+    "declaration": true, // Enable declaration emit
+    "composite": true,
+    "declarationMap": true
+  },
+  "include": ["src/**/*.spec.ts", "src/**/*.d.ts"]
+}

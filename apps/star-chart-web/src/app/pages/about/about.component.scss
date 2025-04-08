@@ -1,0 +1,147 @@
+.about-container {
+  max-width: 1200px;
+  margin: 2rem auto;
+  padding: 0 2rem;
+}
+
+.gradient-text {
+  background: linear-gradient(90deg, #4a148c, #1976d2, #00b0ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-size: 3rem;
+  text-align: center;
+  margin-bottom: 2rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  animation: shimmer 8s infinite linear;
+  background-size: 400% 100%;
+}
+
+@keyframes shimmer {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.about-card {
+  background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.2) 100%);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(31, 38, 135, 0.15);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  padding: 2rem;
+  margin-bottom: 2rem;
+}
+
+.mission-text {
+  font-size: 1.2rem;
+  line-height: 1.8;
+  color: #424242;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.feature-card {
+  padding: 2rem;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  background: linear-gradient(45deg, #f5f7fa 0%, #e8e8e8 100%);
+  
+  &:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 20px 30px rgba(0, 0, 0, 0.12);
+    background: linear-gradient(45deg, #e3f2fd 0%, #bbdefb 100%);
+  }
+}
+
+.feature-icon {
+  font-size: 2.5rem;
+  width: auto;
+  height: auto;
+  margin-bottom: 1rem;
+  color: #1976d2;
+}
+
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.team-card {
+  padding: 1.5rem;
+  text-align: center;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 25px rgba(0, 0, 0, 0.1);
+  }
+}
+
+.avatar-placeholder {
+  width: 120px;
+  height: 120px;
+  border-radius: 60px;
+  margin: 0 auto 1rem;
+  background: linear-gradient(135deg, #e1bee7, #90caf9);
+}
+
+.tech-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.tech-pill {
+  background: linear-gradient(45deg, #3f51b5, #2196f3);
+  color: white;
+  padding: 0.5rem 1.5rem;
+  border-radius: 30px;
+  font-weight: 500;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+  transition: all 0.3s ease;
+  
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+    background: linear-gradient(45deg, #5c6bc0, #42a5f5);
+  }
+}
+
+h2 {
+  font-size: 2rem;
+  margin: 2rem 0 1rem;
+  color: #333;
+  position: relative;
+  
+  &:after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 0;
+    width: 60px;
+    height: 4px;
+    background: linear-gradient(90deg, #ff9800, #f44336);
+    border-radius: 2px;
+  }
+}
+
+@media (max-width: 768px) {
+  .features-grid, .team-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .gradient-text {
+    font-size: 2rem;
+  }
+}

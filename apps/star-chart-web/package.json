@@ -1,0 +1,9 @@
+{
+  "name": "star-chart-web",
+  "version": "0.0.1",
+  "type": "module",
+  "dependencies": {
+    "zone.js": "~0.14.0",
+    "chart.js": "^4.3.0"
+  }
+}

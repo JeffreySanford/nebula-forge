@@ -1,0 +1,50 @@
+.db-tile {
+  font-family: 'Roboto', sans-serif;
+}
+
+.db-entry {
+  padding: 0.25rem 0;
+  margin-bottom: 1rem;
+  border-left: 3px solid #2e7d32;
+  padding-left: 10px;
+}
+
+.event-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+
+.event-type {
+  font-weight: bold;
+}
+
+.event-time {
+  font-size: 0.8em;
+  color: #757575;
+}
+
+.event-message {
+  margin-bottom: 5px;
+}
+
+.event-operation, .event-collection {
+  font-size: 0.9em;
+  color: #555;
+}
+
+.connection {
+  border-left-color: #2196F3;
+}
+
+.query {
+  border-left-color: #2e7d32;
+}
+
+.error {
+  border-left-color: #f44336;
+
+  .event-type {
+    color: #f44336;
+  }
+}

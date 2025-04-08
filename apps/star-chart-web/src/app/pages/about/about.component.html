@@ -1,0 +1,50 @@
+<div class="about-container" @fadeIn>
+  <h1 class="gradient-text">About Craft Fusion</h1>
+  
+  <div class="about-section">
+    <mat-card class="about-card">
+      <mat-card-content>
+        <h2>Our Mission</h2>
+        <p class="mission-text">
+          Craft Fusion is a comprehensive monitoring and management dashboard designed to provide 
+          real-time insights into your application's performance, database operations, and system health.
+          Our goal is to empower developers with the tools they need to build robust, efficient applications.
+        </p>
+      </mat-card-content>
+    </mat-card>
+  </div>
+  
+  <div class="features-section">
+    <h2>Key Features</h2>
+    <div class="features-grid" @listAnimation>
+      <mat-card class="feature-card" *ngFor="let feature of features">
+        <mat-icon class="feature-icon">{{feature.icon}}</mat-icon>
+        <h3>{{feature.name}}</h3>
+        <p>{{feature.description}}</p>
+      </mat-card>
+    </div>
+  </div>
+  
+  <div class="team-section">
+    <h2>Our Team</h2>
+    <div class="team-grid" @listAnimation>
+      <mat-card class="team-card" *ngFor="let member of teamMembers">
+        <div class="avatar-placeholder"></div>
+        <h3>{{member.name}}</h3>
+        <p>{{member.role}}</p>
+      </mat-card>
+    </div>
+  </div>
+  
+  <div class="tech-section">
+    <h2>Technologies We Use</h2>
+    <div class="tech-pills">
+      <span class="tech-pill">Angular</span>
+      <span class="tech-pill">Node.js</span>
+      <span class="tech-pill">MongoDB</span>
+      <span class="tech-pill">GraphQL</span>
+      <span class="tech-pill">D3.js</span>
+      <span class="tech-pill">Material Design</span>
+    </div>
+  </div>
+</div>

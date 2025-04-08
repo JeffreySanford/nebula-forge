@@ -1,0 +1,14 @@
+<mat-card class="db-tile" [ngClass]="{'mock-data-border': isMockData, 'mock-data-indicator': isMockData}">
+  <mat-card-title>Database Activity</mat-card-title>
+  <mat-card-content>
+    <div *ngFor="let event of events" class="db-entry" [ngClass]="event.type">
+      <div class="event-header">
+        <span class="event-type">{{ event.type | uppercase }}</span>
+        <span class="event-time">{{ event.timestamp | date:'short' }}</span>
+      </div>
+      <div class="event-message">{{ event.message }}</div>
+      <div *ngIf="event.operation" class="event-operation">Operation: {{ event.operation }}</div>
+      <div *ngIf="event.collection" class="event-collection">Collection: {{ event.collection }}</div>
+    </div>
+  </mat-card-content>
+</mat-card>

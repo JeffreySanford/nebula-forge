@@ -1,0 +1,49 @@
+/* You can add global styles to this file, and also import other style files */
+@use '@angular/material' as mat;
+
+// Include the common styles for Angular Material
+@include mat.core();
+
+// Define your custom palette
+$nebula-primary: mat.define-palette(mat.$blue-palette);
+$nebula-accent: mat.define-palette(mat.$pink-palette, A200, A100, A400);
+$nebula-warn: mat.define-palette(mat.$red-palette);
+
+// Create the theme object
+$nebula-theme: mat.define-light-theme((
+  color: (
+    primary: $nebula-primary,
+    accent: $nebula-accent,
+    warn: $nebula-warn,
+  )
+));
+
+// Include theme styles for core and each component used
+@include mat.all-component-themes($nebula-theme);
+
+// Ensure Material Icons are properly styled
+.mat-icon {
+  font-family: 'Material Icons';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}
+
+// Global styles
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: Roboto, "Helvetica Neue", sans-serif;
+}
+
+// Import themed card styles
+@import 'styles/themed-card';

@@ -1,0 +1,9 @@
+<mat-card *ngIf="state">
+  <mat-card-title>User State</mat-card-title>
+  <mat-card-content>
+    <p><strong>ID:</strong> {{ state.id }}</p>
+    <p><strong>Username:</strong> {{ state.username }}</p>
+    <p><strong>Roles:</strong> {{ state.roles.join(', ') }}</p>
+    <p><strong>Status:</strong> <span [ngClass]="state.state">{{ state.state }}</span></p>
+  </mat-card-content>
+</mat-card>
